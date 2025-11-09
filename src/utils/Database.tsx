@@ -64,4 +64,23 @@ export const getProductById = async (productId: string) => {
     return data;
 };
 
+export const getAllProducts = async () => {
+    const { data, error } = await Supabase
+        .from('products')
+        .select(`
+        id: product_id,
+        name,
+        price: wholesaler_price,
+        stock_status: wholesaler_stock,
+        image_url,
+        availability_date
+    `);
+
+    if (error) {
+        console.error('Error fetching all products:', error);
+        return [];
+    }
+    return data;
+};
+
 export default Supabase;
