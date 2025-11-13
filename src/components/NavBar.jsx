@@ -5,7 +5,9 @@ import { useCart } from '../context/CartContext';
 
 function Navbar() {
     const { cartItems } = useCart();
-    const cartItemCount = cartItems.length;
+    const cartItemCount = cartItems.reduce((total, item) => {
+        return total + item.quantity;
+    }, 0);
 
     return (
         <nav className="navbar">

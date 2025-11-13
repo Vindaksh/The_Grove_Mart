@@ -15,7 +15,7 @@ function ProductCard({ product }) {
     const { addToCart } = useCart();
 
     // runs when button clicked
-    const handleAddToCart = () => {
+    const handleAddToCart = (e) => {
         e.preventDefault();
         addToCart(product);
     };
