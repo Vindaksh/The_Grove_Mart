@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Login.css';
 import TextDivider from '../components/TextDivider';
+import { AuthContext } from '../context/AuthContext';
 
 import Supabase from '../utils/Database';
 
@@ -9,6 +10,7 @@ import Supabase from '../utils/Database';
 function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const { setLoading, setSession } = useContext(AuthContext);
     const nav = useNavigate();
     
     const handleSubmit = async (e) => {
@@ -16,7 +18,9 @@ function LoginPage() {
         const {data, error} = await Supabase.auth.signInWithPassword({email:email, password:password});
         if(error){
             console.error("login failed: ",error);
-        } else if(data.user){
+        } else {
+            setLoading();
+            setSession(data.session);
             nav('/');
         }
     };

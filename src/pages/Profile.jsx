@@ -1,26 +1,18 @@
 // src/pages/Profile.jsx
-import  Supabase from '../utils/Database'; // ✅ fix: lowercase name
+import  Supabase from '../utils/Database';
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
+import { AuthContext } from '../context/AuthContext';
 import './Profile.css'; // optional styling file
 
 function Profile() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    // fetch user info on mount
-    const getUser = async () => {
-      const { data } = await Supabase.auth.getUser();
-      setUser(data.user);
-    };
-    getUser();
-  }, []);
+  const { user, loading, setUser, setSession} = useContext(AuthContext);
 
   const handleLogout = async () => {
     await Supabase.auth.signOut();
-    localStorage.clear();
-    sessionStorage.clear();
+    setUser(null);
+    setSession(null);
     navigate("/");
   };
 
@@ -37,14 +29,9 @@ function Profile() {
 
       {/* MAIN CONTENT */}
       <main className="profile-main">
-        {user ? (
+        {user && !loading ? (
           <>
-            <p>Welcome, <strong>{user.user_metadata.full_name || user.email}</strong>!</p>
-            <img 
-              src={user.user_metadata.avatar_url || "https://via.placeholder.com/100"} 
-              alt="Avatar" 
-              className="profile-avatar"
-            />
+            <p>Welcome, <strong>{user.name || user.email}</strong>!</p>
           </>
         ) : (
           <p>Loading user data...</p>

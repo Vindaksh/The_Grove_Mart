@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 import {getUserDetails} from '../utils/Database';
 import {UserInterface} from '../utils/Interfaces';
 
 function HomePage() {
-    const [userData, setUserData] = useState<UserInterface|null>(null);
+    const { user: userData, loading } = useContext(AuthContext);
     const pageStyle: React.CSSProperties = {
         height: '100vh',
         boxSizing: 'border-box',
@@ -15,17 +16,6 @@ function HomePage() {
         paddingLeft: '50px',
         paddingRight: '50px'
     };
-
-    useEffect(()=>{
-        if(!userData)
-        {
-            const fetchData = async ()=>{
-                const user = await getUserDetails();
-                if(user) setUserData(user);
-            }
-            fetchData();
-        }
-    });
     
     return (
         <div style={pageStyle}>
@@ -35,13 +25,15 @@ function HomePage() {
             <p style={{ fontSize: '18px', color: '#000000ff' }}>
                 Your one-stop online delivery system.
             </p>
-            {(userData)?
-            <text style={{ fontSize: '18px', color: '#000000ff' }}>Hello {userData!.name}</text>
+            {(loading)?
+            <p style={{ fontSize: '18px', color: '#000000ff' }}>Loading...</p>
+            :((userData)?
+            <p style={{ fontSize: '18px', color: '#000000ff' }}>Hello {userData!.name}</p>
             :
             <Link to="/register" style={{ fontSize: '20px', color: '#00008B' }}>
                 Go to Registration Page
             </Link>
-            }
+            )}
         </div>
     );
 }

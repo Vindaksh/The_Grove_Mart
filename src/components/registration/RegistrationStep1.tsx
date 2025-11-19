@@ -19,7 +19,7 @@ const Step1 = ({ onNext, onChange , initialFormData}:Step1Props) => {
 
     const handle3rdPartyLogin = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         const fetchUserData = async () => {
-            const {data, error} = await Supabase.auth.signInWithOAuth({provider:"google", options:{redirectTo:"http://localhost:5173/"}});
+            const {data, error} = await Supabase.auth.signInWithOAuth({provider:"google", options:{redirectTo:"http://localhost:5173/register"}});
             if(error) {console.error("Sign in failed: ",error);}
         }
         fetchUserData();

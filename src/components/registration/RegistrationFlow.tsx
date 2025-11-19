@@ -54,6 +54,7 @@ const RegistrationFlow = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
   {
+    console.log(formData);
     e.preventDefault();
     if(!OAuthSignup) {
       const {data, error} = await Supabase.auth.signUp({

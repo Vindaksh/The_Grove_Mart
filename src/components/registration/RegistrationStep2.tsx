@@ -22,6 +22,23 @@ const Step2 = ({ onNext, onPrev, onChange, initialFormData }:Step2Props) => {
         onChange({[name]: value});
     };
 
+    const handleCurrentLocation = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        if(navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    setFormData({...formData, latitude:latitude, longitude:longitude}); 
+                    onChange({"latitude": String(latitude), "longitude": String(longitude)});
+                },
+                (error) => {
+                    console.error("Error getting current location: ", error);
+                }
+            )
+        } else {
+            console.error("Geolocation not supported");
+        }
+    }
+
     return (
         <form className="register-form step1" onSubmit={onNext}>
             <div className="form-group">
@@ -51,6 +68,9 @@ const Step2 = ({ onNext, onPrev, onChange, initialFormData }:Step2Props) => {
             {/* Handle getting location using google api later */}
             {(formData.role!='Customer')&&
             <>
+            <div className="form-group">
+                <button onClick={handleCurrentLocation}>Get current location</button>
+            </div>
             <div className="form-group">
                 <label htmlFor="latitude">Latitude:</label>
                 {formData.latitude?
