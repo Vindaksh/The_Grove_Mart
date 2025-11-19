@@ -10,6 +10,7 @@ function DashboardPage() {
     useEffect(() => {
         const fetchProducts = async () => {
             const productData = await getAllProducts();
+            console.log("Products fetched:", productData);
             setProducts(productData);
             setLoading(false);
         };
