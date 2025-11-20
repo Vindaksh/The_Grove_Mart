@@ -16,6 +16,7 @@ interface AuthContextInterface {
     setUser: (user: UserInterface | null) => void;
     setSession: (session: Session | null | undefined) => void;
     setLoading: () => void;
+    stopLoading: () => void;
 };
 
 export const AuthContext = createContext<AuthContextInterface>({
@@ -24,7 +25,8 @@ export const AuthContext = createContext<AuthContextInterface>({
     loading: true,
     setUser: (user) => { },
     setSession: (session) => { },
-    setLoading: () => { }
+    setLoading: () => { },
+    stopLoading: () => { }
 });
 
 export const useAuth = () => {
@@ -94,7 +96,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [session, prevSessionId]);
 
     return (
-        <AuthContext.Provider value={{ user, session, loading, setUser, setSession, setLoading: () => { setLoading(true); }}}>
+        <AuthContext.Provider value={{ user, session, loading, setUser, setSession, setLoading: () => { setLoading(true); }, stopLoading: () => { setLoading(false); }}}>
             {children}
         </AuthContext.Provider>
     );

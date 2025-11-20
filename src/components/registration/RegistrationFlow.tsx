@@ -77,7 +77,13 @@ const RegistrationFlow = () => {
           email: formData.email,
           options: { emailRedirectTo: 'https://localhost:5173' }
         });
-        console.log('User created, verification email sent.');
+        if (error) {
+          console.error("Sign up failed: ", error);
+          setError(error.message || 'Registration failed. Please try a different email.');
+        }
+        else {
+          console.log('User created, verification email sent.');
+        }
       }
     }
     else {
