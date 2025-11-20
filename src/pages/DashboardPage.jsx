@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { getAllProducts } from '../utils/Database';
-import ProductCard from '../components/ProductCard';
-import './Dashboard.css';
+import React, { useState, useEffect } from "react";
+import { getAllProducts } from "../utils/Database";
+import ProductCard from "../components/ProductCard";
+import "./Dashboard.css";
 
 function DashboardPage() {
     const [products, setProducts] = useState([]);
@@ -29,6 +29,7 @@ function DashboardPage() {
     return (
         <div className="dashboard-container">
             <h1 className="dashboard-title">Our Products</h1>
+
             <div className="product-list">
                 {products.map((product) => (
                     <ProductCard key={product.id} product={product} />

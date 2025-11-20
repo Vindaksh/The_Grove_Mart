@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { getUserDetails } from "../utils/Database";
+import {
+    getCartItems,
+    addItemToCart,
+    getOrCreateCart
+} from "../utils/CartDB";
+import Supabase from "../utils/Database";
 
 const CartContext = createContext();
 
@@ -7,56 +14,101 @@ export function useCart() {
 }
 
 export function CartProvider({ children }) {
+    const [user, setUser] = useState(null);
     const [cartItems, setCartItems] = useState([]);
+    const [cartId, setCartId] = useState(null);
     const [totalPrice, setTotalPrice] = useState(0);
 
+    // -------------------------------------------------
+    // Load user + cart on startup
+    // -------------------------------------------------
     useEffect(() => {
-        const calculateTotal = () => {
-            return cartItems.reduce((total, item) => {
-                return total + (item.price * item.quantity);
-            }, 0);
+        const loadUserAndCart = async () => {
+            const u = await getUserDetails();
+            if (!u) return; // not logged in
+
+            setUser(u);
+
+            const cart = await getOrCreateCart(u.id);
+            setCartId(cart.cart_id);
+
+            const items = await getCartItems(u.id);
+            setCartItems(items);
         };
-        setTotalPrice(calculateTotal());
+
+        loadUserAndCart();
+    }, []);
+
+    // -------------------------------------------------
+    // Recalculate total price anytime cart changes
+    // -------------------------------------------------
+    useEffect(() => {
+        const total = cartItems.reduce((sum, item) => {
+            const listing = item.product_listings;
+            return sum + listing.price * item.quantity;
+        }, 0);
+
+        setTotalPrice(total);
     }, [cartItems]);
 
-    const addToCart = (product) => {
-        setCartItems((prevItems) => {
+    // -------------------------------------------------
+    // Add item to cart
+    // -------------------------------------------------
+    const addToCart = async (listing) => {
+    if (!user) {
+        alert("Please sign in to add to cart.");
+        return;
+    }
 
-            const existingItem = prevItems.find((item) => item.id === product.id);
+    if (!listing?.product_listings_id) {
+        console.error("addToCart called without a valid listing:", listing);
+        return;
+    }
 
-            if (existingItem) {
-                return prevItems.map((item) =>
-                    item.id === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
-                        : item
-                );
-            } else {
-                return [...prevItems, { ...product, quantity: 1 }];
-            }
-        });
+    const addedItem = await addItemToCart(user.id, listing.product_listings_id);
+    if (!addedItem) return;
+
+    // Reload cart
+    const items = await getCartItems(user.id);
+    setCartItems(items);
+};
+
+
+    // -------------------------------------------------
+    // Remove an item
+    // -------------------------------------------------
+    const removeFromCart = async (cartItemId) => {
+        if (!user) return;
+
+        await Supabase.from("cart_items")
+            .delete()
+            .eq("cart_item_id", cartItemId);
+
+        const items = await getCartItems(user.id);
+        setCartItems(items);
     };
 
-    const removeFromCart = (productId) => {
-        setCartItems((prevItems) => {
-            return prevItems.filter((item) => item.id !== productId);
-        });
-    };
-
-    const updateQuantity = (productId, newQuantity) => {
-        const quantity = parseInt(newQuantity, 10);
-
-        if (quantity < 1) {
-            removeFromCart(productId);
+    // -------------------------------------------------
+    // Update quantity
+    // -------------------------------------------------
+    const updateQuantity = async (cartItemId, newQty) => {
+        const qty = parseInt(newQty, 10);
+        if (qty < 1) {
+            removeFromCart(cartItemId);
             return;
         }
 
-        setCartItems((prevItems) => {
-            return prevItems.map((item) =>
-                item.id === productId ? { ...item, quantity: quantity } : item
-            );
-        });
+        await Supabase.from("cart_items")
+            .update({ quantity: qty })
+            .eq("cart_item_id", cartItemId);
+
+        const items = await getCartItems(user.id);
+        setCartItems(items);
     };
 
+    // -------------------------------------------------
+    // Clear cart locally (checkout handles DB)
+    // -------------------------------------------------
     const clearCart = () => {
         setCartItems([]);
     };
@@ -70,5 +122,9 @@ export function CartProvider({ children }) {
         clearCart,
     };
 
-    return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+    return (
+        <CartContext.Provider value={value}>
+            {children}
+        </CartContext.Provider>
+    );
 }

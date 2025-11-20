@@ -2,40 +2,71 @@ import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import './Checkout.css';
+import {
+    createOrder,
+    createPayment,
+    addOrderItems,
+    createReimbursements,
+    decrementStock,
+    clearUserCart
+} from "../utils/OrderDB";
+import { getUserDetails } from "../utils/Database";
 
 function CheckoutPage() {
     const { cartItems, totalPrice, clearCart } = useCart();
-    const [name, setName] = useState('');
-    const [address, setAddress] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('cod'); // cod = Cash on Delivery
     const navigate = useNavigate();
 
-    const handleSubmitOrder = (e) => {
-        e.preventDefault();
+    // NEW SHIPPING FIELDS
+    const [address1, setAddress1] = useState('');
+    const [address2, setAddress2] = useState('');
+    const [city, setCity] = useState('');
+    const [pincode, setPincode] = useState('');
+    const [country, setCountry] = useState('');
 
-        //!!collecting data from database (check table name, fields)
-        const orderData = {
-            customerName: name,
-            shippingAddress: address,
-            paymentMethod: paymentMethod,
-            items: cartItems,
-            total: totalPrice,
-        };
+    const [paymentMethod, setPaymentMethod] = useState('cod');
 
-        //!!
-        console.log('--- FAKE ORDER PLACED ---');
-        console.log('Order Data:', orderData);
-        console.log('-------------------------');
+    const handleSubmitOrder = async (e) => {
+    e.preventDefault();
 
-        // clear the cart
-        clearCart();
+    const user = await getUserDetails();
+    if (!user) {
+        alert("You must be logged in.");
+        return;
+    }
 
-        // send user to the success page
-        navigate('/order-success');
-    };
+    // 1. Create Payment
+    const payment = await createPayment(totalPrice);
+    if (!payment) return;
 
-    if (cartItems.length === 0) {
-        // Just in case a user navigates here with an empty cart
+    // 2. Create Order
+    const order = await createOrder(user.id, payment.payment_id, {
+    address1,
+    address2,
+    city,
+    pincode,
+    country
+});
+    if (!order) return;
+
+    // 3. Insert order_items
+    await addOrderItems(order.order_id, cartItems);
+
+    // 4. Create reimbursements
+    await createReimbursements(cartItems, order.order_id);
+
+    // 5. Update stock
+    await decrementStock(cartItems);
+
+    // 6. Empty Cart
+    await clearUserCart(user.id);
+    clearCart(); // local state
+
+    // 7. Redirect to success page
+    navigate("/order-success", { state: { orderId: order.order_id } });
+
+};
+
+    if (!cartItems || cartItems.length === 0) {
         return (
             <div className="checkout-container">
                 <h2>Your Cart is Empty</h2>
@@ -43,62 +74,119 @@ function CheckoutPage() {
             </div>
         );
     }
+    const fetchLocationFromPincode = async () => {
+    if (pincode.length < 6) return; // Indian PIN = 6 digits
+
+    try {
+        const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+        const data = await res.json();
+
+        if (!data || data[0].Status !== "Success") {
+            console.log("Invalid pincode");
+            return;
+        }
+
+        const postOffice = data[0].PostOffice?.[0];
+
+        if (postOffice) {
+            setCity(postOffice.District);
+            setCountry(postOffice.Country);     // always India
+            // (optional) setState(postOffice.State)
+        }
+
+    } catch (err) {
+        console.error("Pincode lookup failed:", err);
+    }
+};
 
     return (
         <div className="checkout-container">
             <h1>Checkout</h1>
+
             <div className="checkout-content">
+
+                {/* SHIPPING FORM */}
                 <form className="checkout-form" onSubmit={handleSubmitOrder}>
                     <h2>Shipping Details</h2>
 
+                    {/* Address Line 1 */}
                     <div className="form-group">
-                        <label htmlFor="name">Full Name</label>
+                        <label>Address Line 1</label>
                         <input
                             type="text"
-                            id="name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            value={address1}
+                            onChange={(e) => setAddress1(e.target.value)}
                             required
                         />
                     </div>
 
+                    {/* Address Line 2 (optional) */}
                     <div className="form-group">
-                        <label htmlFor="address">Shipping Address</label>
+                        <label>Address Line 2 (Optional)</label>
                         <input
                             type="text"
-                            id="address"
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            placeholder="Street, City, Postal Code"
+                            value={address2}
+                            onChange={(e) => setAddress2(e.target.value)}
+                        />
+                    </div>
+
+                    
+
+                    {/* Pincode */}
+                    <div className="form-group">
+                        <label>Pincode</label>
+                        <input
+                            type="text"
+                            value={pincode}
+                            onChange={(e) => setPincode(e.target.value)}
+                            onBlur={fetchLocationFromPincode}   // ⭐ auto-fill trigger
+                            required
+                        />
+                    </div>
+
+                    {/* City */}
+                    <div className="form-group">
+                        <label>City</label>
+                        <input
+                            type="text"
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    {/* Country */}
+                    <div className="form-group">
+                        <label>Country</label>
+                        <input
+                            type="text"
+                            value={country}
+                            onChange={(e) => setCountry(e.target.value)}
                             required
                         />
                     </div>
 
                     <h2>Payment Method</h2>
                     <div className="payment-options">
-                        <div className="payment-option">
+
+                        <label className="payment-option">
                             <input
                                 type="radio"
-                                id="cod"
-                                name="paymentMethod"
                                 value="cod"
                                 checked={paymentMethod === 'cod'}
                                 onChange={() => setPaymentMethod('cod')}
                             />
-                            <label htmlFor="cod">Cash on Delivery (Offline)</label>
-                        </div>
-                        <div className="payment-option">
+                            Cash on Delivery
+                        </label>
+
+                        <label className="payment-option disabled">
                             <input
                                 type="radio"
-                                id="online"
-                                name="paymentMethod"
                                 value="online"
-                                checked={paymentMethod === 'online'}
-                                onChange={() => setPaymentMethod('online')}
-                                disabled // Online payment is not built yet
+                                disabled
                             />
-                            <label htmlFor="online" className="disabled">Online Payment (Coming Soon)</label>
-                        </div>
+                            Online Payment (Coming Soon)
+                        </label>
                     </div>
 
                     <button type="submit" className="place-order-btn">
@@ -106,20 +194,30 @@ function CheckoutPage() {
                     </button>
                 </form>
 
+                {/* ORDER SUMMARY */}
                 <div className="order-summary">
-                    <h2>Order Summary</h2>
-                    {cartItems.map(item => (
-                        <div key={item.id} className="summary-item">
-                            <span>{item.name} (x{item.quantity})</span>
-                            <span>${(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                    ))}
+                    <h2>Your Order</h2>
+
+                    {cartItems.map((item) => {
+                        const listing = item.product_listings;
+                        const product = listing.products;
+
+                        return (
+                            <div key={item.cart_item_id} className="summary-item">
+                                <span>{product.name} (x{item.quantity})</span>
+                                <span>₹{(listing.price * item.quantity).toFixed(2)}</span>
+                            </div>
+                        );
+                    })}
+
                     <hr />
+
                     <div className="summary-total">
                         <strong>Total</strong>
-                        <strong>${totalPrice.toFixed(2)}</strong>
+                        <strong>₹{totalPrice.toFixed(2)}</strong>
                     </div>
                 </div>
+
             </div>
         </div>
     );

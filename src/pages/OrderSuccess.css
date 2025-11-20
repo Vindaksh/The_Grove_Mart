@@ -1,0 +1,56 @@
+.success-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 4rem 1rem;
+}
+
+.success-card {
+    background: #ffffff;
+    padding: 3rem 2rem;
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.success-icon {
+    font-size: 4rem;
+    color: #28a745;
+    margin-bottom: 1rem;
+}
+
+.success-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #222;
+}
+
+.success-message {
+    font-size: 1.15rem;
+    color: #555;
+    margin-bottom: 1.5rem;
+}
+
+.success-order-id {
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 2rem;
+}
+
+.success-button {
+    display: inline-block;
+    padding: 0.9rem 1.6rem;
+    background-color: #007bff;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 1.1rem;
+    transition: 0.2s ease;
+}
+
+.success-button:hover {
+    background-color: #0056b3;
+}

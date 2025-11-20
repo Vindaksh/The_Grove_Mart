@@ -43,44 +43,75 @@ export const getUserDetails = async (): Promise<UserInterface | null> => {
 
 export const getProductById = async (productId: string) => {
     const { data, error } = await Supabase
-        .from('products')
+        .from("products")
         .select(`
             id: product_id,
             name,
             description,
-            price: wholesaler_price,
-            stock_status: wholesaler_stock,
-            availability_date,
-            image_url 
+            image_url,
+            listings: product_listings (
+                product_listings_id,
+                price,
+                stock,
+                seller_id,
+                seller: retailers (
+                    user_id,
+                    name,
+                    location
+                )
+            )
         `)
-        .eq('product_id', productId)
+        .eq("product_id", productId)
         .single();
 
     if (error) {
-        console.error('Error fetching product:', error);
+        console.error("Error fetching product:", error);
         return null;
     }
 
-    return data;
+    // Compute lowest price
+    const lowestPrice =
+        data.listings?.length > 0
+            ? Math.min(...data.listings.map((l: any) => l.price))
+            : null;
+
+    return {
+        ...data,
+        lowest_price: lowestPrice,
+    };
 };
 
-export const getAllProducts = async () => {
-    const { data, error } = await Supabase
-        .from('products')
-        .select(`
-        id: product_id,
-        name,
-        price: wholesaler_price,
-        stock_status: wholesaler_stock,
-        image_url,
-        availability_date
-    `);
 
-    if (error) {
-        console.error('Error fetching all products:', error);
+    export const getAllProducts = async () => {
+    const { data, error } = await Supabase
+        .from("products")
+        .select(`
+            id: product_id,
+            name,
+            description,
+            image_url,
+            listings: product_listings (
+                price,
+                stock
+            )
+        `);
+
+    if (error || !data) {
+        console.error("Error fetching all products:", error);
         return [];
     }
-    return data;
+
+    // Compute lowest price for each product
+    return data.map(product => {
+        const lowestPrice = product.listings?.length
+            ? Math.min(...product.listings.map(l => l.price))
+            : null;
+
+        return {
+            ...product,
+            lowest_price: lowestPrice,
+        };
+    });
 };
 
 export default Supabase;
