@@ -13,8 +13,8 @@ interface AuthContextInterface {
     user: UserInterface | null;
     session: Session | null | undefined;
     loading: boolean;
-    setUser: (user: UserInterface|null) => void;
-    setSession: (session: Session|null|undefined) => void;
+    setUser: (user: UserInterface | null) => void;
+    setSession: (session: Session | null | undefined) => void;
     setLoading: () => void;
 };
 
@@ -22,23 +22,26 @@ export const AuthContext = createContext<AuthContextInterface>({
     user: null,
     session: null,
     loading: true,
-    setUser: (user) => {},
-    setSession: (session) => {},
-    setLoading: ()=>{}
+    setUser: (user) => { },
+    setSession: (session) => { },
+    setLoading: () => { }
 });
 
+export const useAuth = () => {
+    return useContext(AuthContext);
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<UserInterface|null>(null);
-    const [session, setSession] = useState<Session|null|undefined>(undefined);
+    const [user, setUser] = useState<UserInterface | null>(null);
+    const [session, setSession] = useState<Session | null | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
 
-    const getUserData =  async (session: Session): Promise<UserInterface|null>  =>  {
+    const getUserData = async (session: Session): Promise<UserInterface | null> => {
         const { data, error } = await Supabase.rpc("get_user_data", { uid: session.user.id }) as { data: UserDataInterface | null, error: any };
-        
-        if(data)
-        {
-            var loc: {latitude: number, longitude: number}|null;
-            if(data.latitude) {
+
+        if (data) {
+            var loc: { latitude: number, longitude: number } | null;
+            if (data.latitude) {
                 loc = {
                     latitude: data!.latitude,
                     longitude: data!.longitude!
@@ -61,15 +64,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error(error);
             return null;
         }
-    } 
+    }
 
     useEffect(() => {
-        const { data:authListener } = Supabase.auth.onAuthStateChange(
+        const { data: authListener } = Supabase.auth.onAuthStateChange(
             async (event, session) => {
                 setSession(session);
             }
         );
-        
+
         return () => {
             authListener.subscription.unsubscribe();
         };
@@ -77,8 +80,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         const loadUserData = async () => {
-            if(session===undefined) return;
-            const userData = await session? await getUserData(session!): null;
+            if (session === undefined) return;
+            const userData = await session ? await getUserData(session!) : null;
             setUser(userData);
             setLoading(false);
         }
@@ -86,8 +89,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [session]);
 
     return (
-    <AuthContext.Provider value={{ user, session, loading, setUser, setSession, setLoading: ()=>{setLoading(true);}}}>
-      {children}
-    </AuthContext.Provider>
-  );
+        <AuthContext.Provider value={{ user, session, loading, setUser, setSession, setLoading: () => { setLoading(true); } }}>
+            {children}
+        </AuthContext.Provider>
+    );
 }

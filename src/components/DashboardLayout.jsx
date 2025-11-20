@@ -1,30 +1,34 @@
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './DashboardLayout.css';
 
 function DashboardLayout() {
-    // !!
-    // get the user's role from AuthContext.
-    // pretending retailer for now (will show retailer pages even in wholesaler till functionality is added)
-    const userRole = 'retailer';
+    const { user } = useAuth();
+    const role = user?.role;
 
     return (
         <div className="dashboard-layout">
             <nav className="dashboard-sidebar">
                 <h3>Dashboard</h3>
 
-                {userRole === 'retailer' && (
+                {/* Retailer Links */}
+                {role === 'retailer' && (
                     <>
-                        <Link to="/admin/retailer/wholesale">Wholesale Market</Link>
-                        <Link to="/admin/retailer/inventory">Manage Inventory</Link>
-                        <Link to="/admin/retailer/orders">Customer Orders</Link>
+                        {/* 'wholesale' is relative to /admin/retailer/ */}
+                        <Link to="wholesale">Wholesale Market</Link>
+                        <Link to="inventory">Manage Inventory</Link>
+                        <Link to="orders">Customer Orders</Link>
                     </>
                 )}
 
-                {userRole === 'wholesaler' && (
+                {/* Wholesaler Links */}
+                {role === 'wholesaler' && (
                     <>
-                        <Link to="/admin/wholesaler/inventory">Manage Stock</Link>
-                        <Link to="/admin/wholesaler/orders">Retailer Orders</Link>
+                        {/* '' is the index route, which redirects to WholesalerDashboard */}
+                        <Link to="">Dashboard</Link>
+                        <Link to="inventory">Manage Stock</Link>
+                        <Link to="orders">Retailer Orders</Link>
                     </>
                 )}
             </nav>

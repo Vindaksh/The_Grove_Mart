@@ -1,7 +1,9 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+
 import HomePage from './pages/HomePage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
@@ -13,13 +15,18 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import DashboardLayout from './components/DashboardLayout';
+
 import RetailerDashboard from './pages/RetailerDashboard';
 import RetailerInventory from './pages/RetailerInventory';
-import WholesalerDashboard from './pages/WholesalerDashboard';
-import WholesalerOrders from './pages/WholesalerOrders';
 import RetailerOrders from './pages/RetailerOrders';
 import WholesaleMarket from './pages/WholesaleMarket';
+
+import WholesalerDashboard from './pages/WholesalerDashboard';
+import WholesalerOrders from './pages/WholesalerOrders';
 import WholesalerInventory from './pages/WholesalerInventory';
+
+const ALL_ROLES = ['customer', 'retailer', 'wholesaler'];
+const SELLER_ROLES = ['retailer', 'wholesaler'];
 
 function App() {
   return (
@@ -28,31 +35,44 @@ function App() {
         <BrowserRouter>
           <NavBar />
           <Routes>
-            {/*Customer facing*/}
+            {/*Public*/}
             <Route path="/" element={<HomePage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/product/:productId" element={<ProductDetailPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/order-success" element={<OrderSuccessPage />} />
 
-            {/*admin nested routes*/}
-            <Route path="/admin" element={<DashboardLayout />}>
-              {/* Retailer Routes */}
-              <Route path="retailer" element={<RetailerDashboard />} />
-              <Route path="retailer/inventory" element={<RetailerInventory />} />
-              <Route path="retailer/orders" element={<RetailerOrders />} />
-              <Route path="retailer/wholesale" element={<WholesaleMarket />} />
+            {/*Customer facing*/}
+            <Route path="/cart" element={<ProtectedRoute allowedRoles={ALL_ROLES}><CartPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute allowedRoles={ALL_ROLES}><ProfilePage /></ProtectedRoute>} />
+            <Route path="/checkout" element={<ProtectedRoute allowedRoles={ALL_ROLES}><CheckoutPage /></ProtectedRoute>} />
+            <Route path="/order-success" element={<ProtectedRoute allowedRoles={ALL_ROLES}><OrderSuccessPage /></ProtectedRoute>} />
 
-              {/* Wholesaler Routes */}
-              <Route path="wholesaler" element={<WholesalerDashboard />} />
-              <Route path="wholesaler/orders" element={<WholesalerOrders />} />
-              <Route path="wholesaler/inventory" element={<WholesalerInventory />} />
+            {/* 3. ADMIN ROUTES - RETAILER (Only Retailer can access these paths) */}
+            <Route
+              path="/admin/retailer"
+              element={<ProtectedRoute allowedRoles={['retailer']}><DashboardLayout /></ProtectedRoute>}
+            >
+              <Route index element={<Navigate to="wholesale" replace />} />
+              <Route path="inventory" element={<RetailerInventory />} />
+              <Route path="orders" element={<RetailerOrders />} />
+              <Route path="wholesale" element={<WholesaleMarket />} />
+              {/*<Route path="wholesale/item/:wholesaleItemId" element={<RetailerProductDetailPage />} /> */}
             </Route>
+
+            {/* 4. ADMIN ROUTES - WHOLESALER (Only Wholesaler can access these paths) */}
+            <Route
+              path="/admin/wholesaler"
+              element={<ProtectedRoute allowedRoles={['wholesaler']}><DashboardLayout /></ProtectedRoute>}
+            >
+              <Route index element={<WholesalerDashboard />} />
+              <Route path="orders" element={<WholesalerOrders />} />
+              <Route path="inventory" element={<WholesalerInventory />} />
+            </Route>
+
+            {/* 5. Fallback for undefined base admin path (sends unauthorized users to login) */}
+            <Route path="/admin" element={<Navigate to="/login" replace />} />
 
           </Routes>
         </BrowserRouter>

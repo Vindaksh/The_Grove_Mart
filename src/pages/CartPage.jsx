@@ -1,17 +1,24 @@
 import React from 'react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import './CartPage.css';
 
 function CartPage() {
-    const { cartItems, totalPrice, removeFromCart, updateQuantity, clearCart } = useCart();
+    const { cartItems, totalPrice, removeFromCart, updateQuantity } = useCart();
+    const { user } = useAuth(); // Get user for role check
 
-    if (!cartItems || cartItems.length === 0) {
+    // Determine the correct landing spot based on role
+    const shoppingPath = user?.role === 'retailer' ? '/admin/retailer/wholesale' : '/dashboard';
+
+    if (cartItems.length === 0) {
         return (
-            <div className="cart-empty">
+            <div className="cart-container cart-empty">
                 <h1>Your Cart is Empty</h1>
                 <p>Looks like you haven't added anything to your cart yet.</p>
-                <Link to="/dashboard" className="cart-checkout-btn">
+
+                {/* Redirects based on role */}
+                <Link to={shoppingPath} className="cart-checkout-btn">
                     Start Shopping
                 </Link>
             </div>
@@ -29,7 +36,7 @@ function CartPage() {
 
                     return (
                         <div key={item.cart_item_id} className="cart-item">
-                            
+
                             {/* PRODUCT IMAGE */}
                             <img
                                 src={product.image_url}
