@@ -1,5 +1,5 @@
 import { UserInterface, UserDataInterface } from '../utils/Interfaces';
-import { Session } from '@supabase/supabase-js'; //interfaces
+import { Session } from '@supabase/supabase-js';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { createClient } from "@supabase/supabase-js";
@@ -16,6 +16,7 @@ interface AuthContextInterface {
     setUser: (user: UserInterface | null) => void;
     setSession: (session: Session | null | undefined) => void;
     setLoading: () => void;
+    stopLoading: () => void;
 };
 
 export const AuthContext = createContext<AuthContextInterface>({
@@ -24,17 +25,23 @@ export const AuthContext = createContext<AuthContextInterface>({
     loading: true,
     setUser: (user) => { },
     setSession: (session) => { },
-    setLoading: () => { }
+    setLoading: () => { },
+    stopLoading: () => { }
 });
 
 export const useAuth = () => {
     return useContext(AuthContext);
 };
 
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserInterface | null>(null);
     const [session, setSession] = useState<Session | null | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
+
+    const stopLoading = () => {
+        setLoading(false);
+    };
 
     const getUserData = async (session: Session): Promise<UserInterface | null> => {
         const { data, error } = await Supabase.rpc("get_user_data", { uid: session.user.id }) as { data: UserDataInterface | null, error: any };
@@ -81,15 +88,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         const loadUserData = async () => {
             if (session === undefined) return;
+
             const userData = await session ? await getUserData(session!) : null;
             setUser(userData);
+
             setLoading(false);
         }
         loadUserData();
     }, [session]);
 
     return (
-        <AuthContext.Provider value={{ user, session, loading, setUser, setSession, setLoading: () => { setLoading(true); } }}>
+        <AuthContext.Provider value={{ user, session, loading, setUser, setSession, setLoading: () => { setLoading(true); }, stopLoading }}>
             {children}
         </AuthContext.Provider>
     );

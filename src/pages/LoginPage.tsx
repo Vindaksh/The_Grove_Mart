@@ -17,40 +17,47 @@ function LoginPage() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string>('');
 
-    const { setLoading, setSession } = useContext(AuthContext);
+    // Get the core functions and state from AuthContext
+    const { setLoading, setSession, stopLoading } = useContext(AuthContext); // <<< Use stopLoading
     const { user, loading } = useAuth();
-    const nav = useNavigate();
+    const navigate = useNavigate();
 
-    // 1. Check if user is already logged in and redirect immediately
+    // 1. Redirect already logged-in users
     useEffect(() => {
         if (!loading && user) {
             const redirectPath = ROLE_LANDING_PATHS[user.role] || '/dashboard';
-            // Send user to their specific dashboard
-            nav(redirectPath, { replace: true });
+            navigate(redirectPath, { replace: true });
         }
-    }, [user, loading, nav]); // Reruns when user state changes
+    }, [user, loading, navigate]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
+
+        // Start loading to show 'Redirecting' screen
         setLoading();
 
-        const { data, error } = await Supabase.auth.signInWithPassword({ email: email, password: password });
+        const { data, error } = await Supabase.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
+
         if (error) {
-            console.error("login failed: ", error);
-            setError(error.message || 'Login failed. Please check your credentials.');
-            setSession(undefined);
+            console.error("Login failed: ", error);
+            setError(error.message || 'Login failed. Check email or password.');
+
+            stopLoading();
         } else if (data.session) {
-            // Success: Set the session, which triggers AuthContext to fetch user details (including role),
-            // and the useEffect hook above handles the navigation.
             setSession(data.session);
-            // navigate is now handled by useEffect after AuthContext processes the user data
         }
     };
 
     const handle3rdPartyLogin = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         const fetchUserData = async () => {
-            const { data, error } = await Supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: "http://localhost:5173/" } });
+            const { error } = await Supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: { redirectTo: "http://localhost:5173/" }
+            });
             if (error) {
                 console.error("Sign in failed: ", error);
                 setError(error.message || 'Google sign-in failed.');
@@ -59,10 +66,12 @@ function LoginPage() {
         fetchUserData();
     }
 
+    // Show redirecting state if loading OR user is valid
     if (loading || user) {
         return <div style={{ padding: '50px', textAlign: 'center' }}>Redirecting...</div>;
     }
 
+    // Render the form only if not loading AND no valid user is present
     return (
         <div className="login-container">
             <form className="login-form" onSubmit={handleSubmit}>
