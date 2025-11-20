@@ -130,3 +130,17 @@ export async function clearUserCart(userId) {
         .delete()
         .eq("cart_id", cartRes.data.cart_id);
 }
+export async function updateOrderLatLng(orderId, lat, lng) {
+    const { data, error } = await Supabase
+        .from('orders')
+        .update({ lat: lat ?? null, lng: lng ?? null })
+        .eq('order_id', orderId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error updating order coords:', error);
+        return null;
+    }
+    return data;
+}

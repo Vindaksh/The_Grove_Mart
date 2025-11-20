@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// src/pages/CheckoutPage.jsx
+import React, { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import './Checkout.css';
@@ -11,12 +12,13 @@ import {
     clearUserCart
 } from "../utils/OrderDB";
 import { getUserDetails } from "../utils/Database";
+import { getSavedAddresses, saveAddressForUser } from "../utils/AdressDB";
+import { getLatLongFromAddress } from "../utils/Geo";
 
 function CheckoutPage() {
     const { cartItems, totalPrice, clearCart } = useCart();
     const navigate = useNavigate();
 
-    // NEW SHIPPING FIELDS
     const [address1, setAddress1] = useState('');
     const [address2, setAddress2] = useState('');
     const [city, setCity] = useState('');
@@ -25,46 +27,150 @@ function CheckoutPage() {
 
     const [paymentMethod, setPaymentMethod] = useState('cod');
 
+    // saved addresses
+    const [savedAddresses, setSavedAddresses] = useState([]);
+    const [selectedSavedAddressId, setSelectedSavedAddressId] = useState(null);
+    const [saveThisAddress, setSaveThisAddress] = useState(false);
+
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        // load saved addresses for user if logged in
+        const loadAddresses = async () => {
+            const user = await getUserDetails();
+            if (!user) return;
+            const list = await getSavedAddresses(user.id);
+            setSavedAddresses(list || []);
+        };
+
+        loadAddresses();
+    }, []);
+
+    // when user picks a saved address, populate fields
+    useEffect(() => {
+        if (!selectedSavedAddressId) return;
+        const addr = savedAddresses.find(a => a.address_id === selectedSavedAddressId);
+        if (!addr) return;
+        setAddress1(addr.address1 || '');
+        setAddress2(addr.address2 || '');
+        setCity(addr.city || '');
+        setPincode(addr.pincode || '');
+        setCountry(addr.country || '');
+        // disable auto-save when picking existing address
+        setSaveThisAddress(false);
+    }, [selectedSavedAddressId, savedAddresses]);
+
+    const fetchLocationFromPincode = async () => {
+        if (!pincode || pincode.trim().length < 3) return; // small guard
+        try {
+            const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+            const data = await res.json();
+            if (!data || data[0].Status !== "Success") {
+                console.log("Invalid pincode");
+                return;
+            }
+            const postOffice = data[0].PostOffice?.[0];
+            if (postOffice) {
+                setCity(postOffice.District || city);
+                setCountry(postOffice.Country || country);
+            }
+        } catch (err) {
+            console.error("Pincode lookup failed:", err);
+        }
+    };
+
     const handleSubmitOrder = async (e) => {
-    e.preventDefault();
+        e.preventDefault();
+        setLoading(true);
 
-    const user = await getUserDetails();
-    if (!user) {
-        alert("You must be logged in.");
-        return;
-    }
+        const user = await getUserDetails();
+        if (!user) {
+            alert("You must be logged in.");
+            setLoading(false);
+            return;
+        }
 
-    // 1. Create Payment
-    const payment = await createPayment(totalPrice);
-    if (!payment) return;
+        // ensure there is at least one cart item
+        if (!cartItems || cartItems.length === 0) {
+            alert("Your cart is empty.");
+            setLoading(false);
+            return;
+        }
 
-    // 2. Create Order
-    const order = await createOrder(user.id, payment.payment_id, {
-    address1,
-    address2,
-    city,
-    pincode,
-    country
-});
-    if (!order) return;
+        // 1) geocode the final address (try nominatim)
+        const coords = await getLatLongFromAddress(address1, address2, city, pincode, country);
 
-    // 3. Insert order_items
-    await addOrderItems(order.order_id, cartItems);
+        // 2) optionally save address (only if user checked the box and it's not an existing saved address)
+        if (saveThisAddress && !selectedSavedAddressId) {
+            try {
+                await saveAddressForUser(user.id, { address1, address2, city, pincode, country }, coords);
+                // refresh saved address list
+                const list = await getSavedAddresses(user.id);
+                setSavedAddresses(list || []);
+            } catch (err) {
+                console.warn('Failed to save address, continuing with order', err);
+            }
+        }
 
-    // 4. Create reimbursements
-    await createReimbursements(cartItems, order.order_id);
+        // 3) create payment
+        const payment = await createPayment(totalPrice);
+        if (!payment) {
+            alert("Payment creation failed.");
+            setLoading(false);
+            return;
+        }
 
-    // 5. Update stock
-    await decrementStock(cartItems);
+        // 4) create order - pass address fields (if your createOrder is strict and does not accept lat/lng,
+        // we will update the order coords separately below)
+        const order = await createOrder(user.id, payment.payment_id, {
+            address1,
+            address2,
+            city,
+            pincode,
+            country
+        });
+        if (!order) {
+            alert("Order creation failed.");
+            setLoading(false);
+            return;
+        }
 
-    // 6. Empty Cart
-    await clearUserCart(user.id);
-    clearCart(); // local state
+        // 5) attach lat/lng to order (OrderDB should expose updateOrderLatLng; if not, add it)
+        try {
+            if (coords) {
+                // call a helper in OrderDB (updateOrderLatLng) which you should add if missing
+                // it's safe to call even if you don't store lat/lng in orders (it will fail quietly)
+                try {
+                    // dynamic import so it doesn't crash if function doesn't exist
+                    const OrderDB = await import('../utils/OrderDB');
+                    if (OrderDB.updateOrderLatLng) {
+                        await OrderDB.updateOrderLatLng(order.order_id, coords.lat, coords.lng);
+                    }
+                } catch (err) {
+                    console.warn("Could not update order coords:", err);
+                }
+            }
+        } catch (err) {
+            console.warn("Error attaching coords to order:", err);
+        }
 
-    // 7. Redirect to success page
-    navigate("/order-success", { state: { orderId: order.order_id } });
+        // 6) insert order items
+        await addOrderItems(order.order_id, cartItems);
 
-};
+        // 7) reimbursements to sellers
+        await createReimbursements(cartItems, order.order_id);
+
+        // 8) decrement stock
+        await decrementStock(cartItems);
+
+        // 9) clear cart in DB + local
+        await clearUserCart(user.id);
+        clearCart();
+
+        // 10) navigate to success
+        navigate("/order-success", { state: { orderId: order.order_id } });
+        setLoading(false);
+    };
 
     if (!cartItems || cartItems.length === 0) {
         return (
@@ -74,30 +180,6 @@ function CheckoutPage() {
             </div>
         );
     }
-    const fetchLocationFromPincode = async () => {
-    if (pincode.length < 6) return; // Indian PIN = 6 digits
-
-    try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-        const data = await res.json();
-
-        if (!data || data[0].Status !== "Success") {
-            console.log("Invalid pincode");
-            return;
-        }
-
-        const postOffice = data[0].PostOffice?.[0];
-
-        if (postOffice) {
-            setCity(postOffice.District);
-            setCountry(postOffice.Country);     // always India
-            // (optional) setState(postOffice.State)
-        }
-
-    } catch (err) {
-        console.error("Pincode lookup failed:", err);
-    }
-};
 
     return (
         <div className="checkout-container">
@@ -105,9 +187,24 @@ function CheckoutPage() {
 
             <div className="checkout-content">
 
-                {/* SHIPPING FORM */}
                 <form className="checkout-form" onSubmit={handleSubmitOrder}>
                     <h2>Shipping Details</h2>
+
+                    {/* Saved addresses dropdown */}
+                    <div className="form-group">
+                        <label>Use saved address</label>
+                        <select
+                            value={selectedSavedAddressId || ''}
+                            onChange={(e) => setSelectedSavedAddressId(e.target.value || null)}
+                        >
+                            <option value="">-- Use a new address --</option>
+                            {savedAddresses.map(addr => (
+                                <option key={addr.address_id} value={addr.address_id}>
+                                    {addr.address1} {addr.address2 ? `, ${addr.address2}` : ''} — {addr.city} ({addr.pincode})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
                     {/* Address Line 1 */}
                     <div className="form-group">
@@ -130,8 +227,6 @@ function CheckoutPage() {
                         />
                     </div>
 
-                    
-
                     {/* Pincode */}
                     <div className="form-group">
                         <label>Pincode</label>
@@ -139,7 +234,7 @@ function CheckoutPage() {
                             type="text"
                             value={pincode}
                             onChange={(e) => setPincode(e.target.value)}
-                            onBlur={fetchLocationFromPincode}   // ⭐ auto-fill trigger
+                            onBlur={fetchLocationFromPincode}
                             required
                         />
                     </div>
@@ -166,9 +261,22 @@ function CheckoutPage() {
                         />
                     </div>
 
+                    {/* Save this address */}
+                    <div className="form-group">
+                        <label>
+                            <input
+                                type="checkbox"
+                                checked={saveThisAddress}
+                                onChange={(e) => setSaveThisAddress(e.target.checked)}
+                                disabled={!!selectedSavedAddressId} // no saving if user selected an existing address
+                            />{' '}
+                            Save this address for future orders
+                        </label>
+                        {selectedSavedAddressId && <p style={{ fontSize: 12, color: '#666' }}>Using saved address - saving disabled.</p>}
+                    </div>
+
                     <h2>Payment Method</h2>
                     <div className="payment-options">
-
                         <label className="payment-option">
                             <input
                                 type="radio"
@@ -189,8 +297,8 @@ function CheckoutPage() {
                         </label>
                     </div>
 
-                    <button type="submit" className="place-order-btn">
-                        Place Order
+                    <button type="submit" className="place-order-btn" disabled={loading}>
+                        {loading ? 'Placing order...' : 'Place Order'}
                     </button>
                 </form>
 

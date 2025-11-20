@@ -5,9 +5,9 @@ import { Link } from 'react-router-dom';
 import './CartPage.css';
 
 function CartPage() {
-    const { cartItems, totalPrice, removeFromCart, updateQuantity } = useCart();
+    const { cartItems, totalPrice, removeFromCart, updateQuantity,clearCart } = useCart();
     const { user } = useAuth(); // Get user for role check
-
+    //console.log(cartItems);
     // Determine the correct landing spot based on role
     const shoppingPath = user?.role === 'retailer' ? '/admin/retailer/wholesale' : '/dashboard';
 
@@ -33,7 +33,7 @@ function CartPage() {
                 {cartItems.map(item => {
                     const listing = item.product_listings;
                     const product = listing.products;
-
+                    console.log("Listing:",listing);
                     return (
                         <div key={item.cart_item_id} className="cart-item">
 
@@ -51,7 +51,7 @@ function CartPage() {
 
                                 {/* Seller Name */}
                                 <p className="cart-seller">
-                                    Sold by: {listing.seller?.name ?? "Unknown Seller"}
+                                    Sold by: {listing.retailers?.name ?? "Unknown Seller"}
                                 </p>
                             </div>
 

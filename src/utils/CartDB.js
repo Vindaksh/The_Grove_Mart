@@ -123,3 +123,49 @@ export async function getCartItems(userId) {
     return data;
 }
 
+/* ---------------------------------------------------
+   4. Delete single cart item
+----------------------------------------------------*/
+export async function removeCartItem(cartItemId) {
+    const { error } = await Supabase
+        .from("cart_items")
+        .delete()
+        .eq("cart_item_id", cartItemId);
+
+    if (error) {
+        console.error("Error removing item:", error);
+        return false;
+    }
+    return true;
+}
+
+/* ---------------------------------------------------
+   5. Update quantity
+----------------------------------------------------*/
+export async function updateCartQuantity(cartItemId, qty) {
+    const { error } = await Supabase
+        .from("cart_items")
+        .update({ quantity: qty })
+        .eq("cart_item_id", cartItemId);
+
+    if (error) {
+        console.error("Error updating quantity:", error);
+        return false;
+    }
+    return true;
+}
+
+/* ---------------------------------------------------
+   6. Clear all items for a user
+----------------------------------------------------*/
+export async function clearCart(userId) {
+    const cart = await getOrCreateCart(userId);
+    if (!cart) return;
+
+    const { error } = await Supabase
+        .from("cart_items")
+        .delete()
+        .eq("cart_id", cart.cart_id);
+
+    if (error) console.error("Error clearing cart:", error);
+}

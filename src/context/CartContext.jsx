@@ -3,7 +3,10 @@ import { getUserDetails } from "../utils/Database";
 import {
     getCartItems,
     addItemToCart,
-    getOrCreateCart
+    getOrCreateCart,
+    removeCartItem,
+    updateCartQuantity,
+    clearCart as clearCartDB
 } from "../utils/CartDB";
 import Supabase from "../utils/Database";
 
@@ -80,27 +83,25 @@ export function CartProvider({ children }) {
     const removeFromCart = async (cartItemId) => {
         if (!user) return;
 
-        await Supabase.from("cart_items")
-            .delete()
-            .eq("cart_item_id", cartItemId);
+        await removeCartItem(cartItemId);
 
         const items = await getCartItems(user.id);
         setCartItems(items);
     };
 
+
     // -------------------------------------------------
     // Update quantity
     // -------------------------------------------------
-    const updateQuantity = async (cartItemId, newQty) => {
-        const qty = parseInt(newQty, 10);
+        const updateQuantity = async (cartItemId, qty) => {
+        qty = parseInt(qty, 10);
+
         if (qty < 1) {
-            removeFromCart(cartItemId);
+            await removeFromCart(cartItemId);
             return;
         }
 
-        await Supabase.from("cart_items")
-            .update({ quantity: qty })
-            .eq("cart_item_id", cartItemId);
+        await updateCartQuantity(cartItemId, qty);
 
         const items = await getCartItems(user.id);
         setCartItems(items);
@@ -109,7 +110,11 @@ export function CartProvider({ children }) {
     // -------------------------------------------------
     // Clear cart locally (checkout handles DB)
     // -------------------------------------------------
-    const clearCart = () => {
+    const clearCart = async () => {
+        if (!user) return;
+
+        await clearCartDB(user.id);
+
         setCartItems([]);
     };
 
