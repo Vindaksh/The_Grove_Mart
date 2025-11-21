@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+//import './Checkout.css';
+import {
+    createOrder,
+    completePayment
+} from "../utils/OrderDB";
+import Supabase, { getUserDetails } from "../utils/Database";
 import { useAuth } from '../context/AuthContext';
-import { createOrder, completePayment } from "../utils/OrderDB";
 import { getSavedAddresses, saveAddressForUser } from "../utils/AdressDB";
 import { getLatLongFromAddress } from "../utils/Geo";
 import { MapPin, CreditCard, Truck, CheckCircle, AlertCircle } from 'lucide-react';
@@ -98,6 +103,14 @@ function CheckoutPage() {
             return;
         }
 
+        if (coords) {
+            await updateOrderLatLng(order.order_id, coords.lat, coords.lng);
+        } else {
+            console.warn("No coordinates found, skipping lat/lng update");
+        }
+
+
+        // navigate to success
         await refreshCart(user);
         navigate("/order-success", { state: { orderId: order.order_id } });
         setLoading(false);

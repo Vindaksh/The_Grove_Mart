@@ -1,24 +1,41 @@
+export async function getLatLongFromAddress(
+    address1,
+    address2,
+    city,
+    pincode,
+    country
+) {
+    const POSITIONSTACK_KEY = "f4d1e546ecd0ee8a734fa189db8ef64f"; // <-- replace with your key
 
-export async function getLatLongFromAddress(address1, address2, city, pincode, country) {
-    const query = encodeURIComponent(`${address1} ${address2 || ''} ${city} ${pincode} ${country}`);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}`;
+    // Positionstack accepts a single query string
+    const query = `${address1} ${address2 || ""} ${city} ${pincode} ${country}`.trim();
+
+    const url = `http://api.positionstack.com/v1/forward?access_key=${POSITIONSTACK_KEY}&query=${encodeURIComponent(query)}&limit=1`;
 
     try {
-        const res = await fetch(url, {
-            headers: {
-                'User-Agent': 'Live-MART-App/1.0 (contact@example.com)' // Nominatim asks for user-agent
-            }
-        });
-        if (!res.ok) return null;
+        const res = await fetch(url);
+        if (!res.ok) {
+            console.error("PositionStack request failed:", res.status);
+            return null;
+        }
+
         const data = await res.json();
-        if (!data || data.length === 0) return null;
+        console.log("📍 PositionStack response:", data);
+
+        if (!data || !data.data || data.data.length === 0) {
+            console.warn("⚠️ No geocode results");
+            return null;
+        }
+
+        const loc = data.data[0];
 
         return {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon)
+            lat: loc.latitude,
+            lng: loc.longitude
         };
+
     } catch (err) {
-        console.error('Geocode error:', err);
+        console.error("🌍 PositionStack geocode error:", err);
         return null;
     }
 }

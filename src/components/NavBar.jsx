@@ -7,14 +7,14 @@ import { ShoppingCart, LogOut, Store, Menu, X, LayoutDashboard } from 'lucide-re
 
 function NavBar() {
     const { cartItems } = useCart();
-    const { user } = useAuth();
+    const { user, loading, logout } = useAuth();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const cartItemCount = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
 
     const handleLogout = async () => {
-        const { error } = await Supabase.auth.signOut();
+        await logout();
         if (!error) navigate('/');
     };
 

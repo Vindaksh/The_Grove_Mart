@@ -1,10 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import { Database } from "./DatabaseInterfaces";
 import { UserInterface, UserDataInterface } from "./Interfaces";
 
 const SUPABASE_URL = "https://hopvgsttpmoofwlxhkbx.supabase.co";
 const SUPABASE_KEY = "sb_publishable_1TvVZv76Cmle6-R_J8b08g_55S7cK5C";
 
-const Supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const Supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
 
 export const getUserDetails = async (): Promise<UserInterface | null> => {
     const { data: { session }, error: authError } = await Supabase.auth.getSession();
@@ -40,6 +41,33 @@ export const getUserDetails = async (): Promise<UserInterface | null> => {
         return null;
     }
 };
+
+export const updateName = async (user: UserInterface, newName: string) => {
+    if (!newName.trim()) return alert("Enter a name");
+
+    const { error } = await Supabase
+        .from("users")
+        .update({ name: newName })
+        .eq("user_id", user!.id);
+
+    if (error) return alert("Error updating name");
+};
+
+export const updatePassword = async (user: UserInterface, newPassword: string) => {
+    if (!newPassword.trim()) return alert("Enter a new password");
+
+    const { error } = await Supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+        console.error("Error updating password", error);
+        return;
+    }
+    else {
+        console.log("Password updated");
+    }
+  };
 
 export const getProductById = async (productId: string) => {
     const { data, error } = await Supabase
@@ -77,6 +105,7 @@ export const getProductById = async (productId: string) => {
 
     return {
         ...data,
+        listings: data.listings.map((i)=>({...i, productInfo: {name:data.name, image_url:data.image_url, description:data.description}})),
         lowest_price: lowestPrice,
     };
 };
@@ -115,3 +144,15 @@ export const getProductById = async (productId: string) => {
 };
 
 export default Supabase;
+export async function getAllRetailers() {
+    const { data, error } = await Supabase
+        .from("sellers")     // <-- replace with correct table name if different
+        .select("seller_id, name, user_role");
+
+    if (error) {
+        console.error("Error fetching retailers:", error);
+        return [];
+    }
+
+    return data;
+}

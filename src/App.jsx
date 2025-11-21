@@ -45,7 +45,7 @@ function App() {
 
             {/*Customer facing*/}
             <Route path="/cart" element={<ProtectedRoute allowedRoles={ALL_ROLES}><CartPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute allowedRoles={ALL_ROLES}><ProfilePage /></ProtectedRoute>} />
+            <Route path="/profile/*" element={<ProtectedRoute allowedRoles={ALL_ROLES}><ProfilePage /></ProtectedRoute>} />
             <Route path="/checkout" element={<ProtectedRoute allowedRoles={ALL_ROLES}><CheckoutPage /></ProtectedRoute>} />
             <Route path="/order-success" element={<ProtectedRoute allowedRoles={ALL_ROLES}><OrderSuccessPage /></ProtectedRoute>} />
 
