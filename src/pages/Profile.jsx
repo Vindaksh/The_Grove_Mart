@@ -7,12 +7,10 @@ import './Profile.css'; // optional styling file
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const { user, loading, setUser, setSession} = useContext(AuthContext);
+  const { user, loading, logout} = useContext(AuthContext);
 
   const handleLogout = async () => {
-    await Supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+    await logout();
     navigate("/");
   };
 

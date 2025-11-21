@@ -8,18 +8,12 @@ import "./NavBar.css";
 
 function NavBar() {
     const { cartItems } = useCart();
-    const { user, session } = useAuth();
+    const { user, loading, logout } = useAuth();
     // Calculate total quantity for the cart badge
     const cartItemCount = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
 
     const handleLogout = async () => {
-        // Clear session and redirect will be handled by AuthContext
-        const { error } = await Supabase.auth.signOut();
-        if (error) {
-            console.error("Logout failed:", error);
-            // We use alert here because we are logging out globally
-            alert("Logout failed. Please try again.");
-        }
+        await logout();
     };
 
     // Centralized function to determine where the main logo/home link goes
@@ -76,7 +70,7 @@ function NavBar() {
             <div className="navbar-links">
                 {renderNavLinks()}
 
-                {user ? (
+                {user&&!loading ? (
                     <button onClick={handleLogout} className="nav-logout-btn">
                         Logout
                     </button>
