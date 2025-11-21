@@ -1,46 +1,63 @@
 import React from "react";
-import "./ProductCard.css";
 import { useCart } from "../context/CartContext";
 import { Link } from "react-router-dom";
+import { ShoppingCart } from 'lucide-react';
 
 function ProductCard({ product }) {
     const { name, image_url, lowest_price } = product;
-
     const { addToCart } = useCart();
 
     const handleAddToCart = (e) => {
         e.preventDefault();
-
-        // Pass only the base product — cart system will map it later
         addToCart({
             id: product.id,
             name: product.name,
-            price: lowest_price, // we add the BEST listing price
+            price: lowest_price,
             image_url: product.image_url,
         });
     };
 
     return (
-        <Link to={`/product/${product.id}`} className="product-card-link">
-            <div className="product-card">
-                <img src={image_url} alt={name} className="product-card-image" />
+        <Link to={`/product/${product.id}`} className="group block h-full">
+            <div className="bg-white rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.1)] border border-slate-100 overflow-hidden transition-all duration-300 flex flex-col h-full hover:-translate-y-1">
 
-                <div className="product-card-body">
-                    <h3 className="product-card-title">{name}</h3>
+                {/* Image Area */}
+                <div className="relative h-56 overflow-hidden bg-rose-50 p-4">
+                    <img
+                        src={image_url || 'https://via.placeholder.com/300'}
+                        alt={name}
+                        className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+                    />
+                </div>
 
-                    {lowest_price ? (
-                        <p className="product-card-price">₹{lowest_price.toFixed(2)}</p>
-                    ) : (
-                        <p className="product-card-price unavailable">No sellers available</p>
-                    )}
+                {/* Content */}
+                <div className="p-5 flex flex-col flex-grow">
+                    <h3 className="text-lg font-bold text-slate-800 mb-1 line-clamp-2 group-hover:text-rose-600 transition-colors">
+                        {name}
+                    </h3>
 
-                    <button
-                        className="add-to-cart-btn"
-                        disabled={!lowest_price}
-                        onClick={handleAddToCart}
-                    >
-                        {lowest_price ? "Add to Cart" : "Unavailable"}
-                    </button>
+                    <div className="mt-auto pt-4 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            {lowest_price ? (
+                                <span className="text-2xl font-extrabold text-slate-900">
+                                    ₹{lowest_price.toFixed(2)}
+                                </span>
+                            ) : (
+                                <span className="text-sm font-bold text-rose-400 bg-rose-50 px-3 py-1 rounded-full">
+                                    Sold Out
+                                </span>
+                            )}
+                        </div>
+
+                        <button
+                            onClick={handleAddToCart}
+                            disabled={!lowest_price}
+                            className="p-3 rounded-2xl bg-slate-100 text-slate-600 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                            title="Add to Cart"
+                        >
+                            <ShoppingCart size={20} strokeWidth={2.5} />
+                        </button>
+                    </div>
                 </div>
             </div>
         </Link>

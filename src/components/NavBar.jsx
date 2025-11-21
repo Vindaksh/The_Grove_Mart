@@ -1,28 +1,23 @@
-// --- File: src/components/NavBar.jsx (FINAL ROLE-AWARE VERSION) ---
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import Supabase from '../utils/Database';
-import "./NavBar.css";
+import { ShoppingCart, LogOut, Store, Menu, X } from 'lucide-react';
 
 function NavBar() {
     const { cartItems } = useCart();
-    const { user, session } = useAuth();
-    // Calculate total quantity for the cart badge
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     const cartItemCount = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
 
     const handleLogout = async () => {
-        // Clear session and redirect will be handled by AuthContext
         const { error } = await Supabase.auth.signOut();
-        if (error) {
-            console.error("Logout failed:", error);
-            // We use alert here because we are logging out globally
-            alert("Logout failed. Please try again.");
-        }
+        if (!error) navigate('/');
     };
 
-    // Centralized function to determine where the main logo/home link goes
     const getRoleLandingPath = (role) => {
         if (!role) return '/';
         switch (role) {
@@ -36,56 +31,129 @@ function NavBar() {
     const isAdmin = user && (user.role === 'retailer' || user.role === 'wholesaler');
     const landingPath = getRoleLandingPath(user?.role);
 
+    const LinkItem = ({ to, children, onClick }) => (
+        <Link
+            to={to}
+            onClick={onClick}
+            // Change: 'hover:text-blue-600' -> 'hover:text-rose-600' and 'hover:bg-rose-50'
+            className="text-sm font-medium text-slate-600 hover:text-rose-600 transition-colors px-4 py-2 rounded-2xl hover:bg-rose-100"
+        >
+            {children}
+        </Link>
+    );
 
-    // --- Dynamic Links Render ---
-    const renderNavLinks = () => {
-        // 1. Guest/Customer View
-        if (!user || user.role === 'customer') {
-            return (
-                <>
-                    {/* The Products link is now only visible to Guests/Customers */}
-                    <Link to="/dashboard">Products</Link>
-                    {user && <Link to="/cart">Cart ({cartItemCount})</Link>}
-                    {user && <Link to="/profile">Profile</Link>}
-                </>
-            );
-        }
+    const renderNavLinks = (mobile = false) => {
+        const Wrapper = mobile ? 'div' : React.Fragment;
+        const wrapperClass = mobile ? 'flex flex-col space-y-2' : '';
 
-        // 2. Retailer/Wholesaler (Admin) View
-        if (isAdmin) {
-            return (
-                <>
-                    {/* The main dashboard link is handled by the logo */}
+        return (
+            <Wrapper className={wrapperClass}>
+                {(!user || user.role === 'customer') && (
+                    <>
+                        <LinkItem to="/dashboard" onClick={() => mobile && setIsMobileMenuOpen(false)}>Products</LinkItem>
+                        {user && (
+                            <LinkItem to="/cart" onClick={() => mobile && setIsMobileMenuOpen(false)}>
+                                <div className="flex items-center gap-2">
+                                    {mobile && <ShoppingCart size={18} />}
+                                    <span>Cart</span>
+                                    {cartItemCount > 0 && (
+                                        // Change: Badge is now Rose
+                                        <span className="ml-1 bg-rose-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                            {cartItemCount}
+                                        </span>
+                                    )}
+                                </div>
+                            </LinkItem>
+                        )}
+                        {user && <LinkItem to="/profile" onClick={() => mobile && setIsMobileMenuOpen(false)}>Profile</LinkItem>}
+                    </>
+                )}
 
-                    {/* Retailers need a cart link for wholesale orders */}
-                    {user.role === 'retailer' && <Link to="/cart">Cart ({cartItemCount})</Link>}
-
-                    {/* All admins need to access their profile */}
-                    <Link to="/profile">Profile</Link>
-                </>
-            );
-        }
+                {isAdmin && (
+                    <>
+                        {user.role === 'retailer' && (
+                            <LinkItem to="/cart" onClick={() => mobile && setIsMobileMenuOpen(false)}>
+                                Cart ({cartItemCount})
+                            </LinkItem>
+                        )}
+                        <LinkItem to="/profile" onClick={() => mobile && setIsMobileMenuOpen(false)}>Profile</LinkItem>
+                    </>
+                )}
+            </Wrapper>
+        );
     };
 
     return (
-        <nav className="navbar">
-            {/* The main logo always sends the user to their appropriate landing page */}
-            <Link to={landingPath} className="navbar-brand">
-                Live MART
-            </Link>
-            <div className="navbar-links">
-                {renderNavLinks()}
+        // Change: Added shadow-rose-100 for a softer shadow
+        <nav className="bg-white/80 backdrop-blur-md border-b border-rose-100 sticky top-0 z-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between h-20"> {/* Increased height slightly for cuteness */}
 
-                {user ? (
-                    <button onClick={handleLogout} className="nav-logout-btn">
-                        Logout
-                    </button>
-                ) : (
-                    <Link to="/login" className="nav-login-btn">
-                        Sign In
-                    </Link>
-                )}
+                    <div className="flex items-center">
+                        <Link to={landingPath} className="flex items-center gap-2 group">
+                            <div className="bg-rose-100 p-2 rounded-xl group-hover:bg-rose-200 transition-colors">
+                                <Store className="h-8 w-8 text-rose-600" />
+                            </div>
+                            <span className="text-2xl font-extrabold text-slate-800 tracking-tight">
+                                Live<span className="text-rose-500">MART</span>
+                            </span>
+                        </Link>
+                    </div>
+
+                    <div className="hidden md:flex items-center space-x-2">
+                        {renderNavLinks()}
+
+                        {user ? (
+                            <button
+                                onClick={handleLogout}
+                                className="ml-4 flex items-center gap-2 text-sm font-bold text-rose-600 hover:text-white border-2 border-rose-100 hover:bg-rose-500 hover:border-rose-500 px-5 py-2 rounded-2xl transition-all duration-300"
+                            >
+                                <LogOut size={18} />
+                                Logout
+                            </button>
+                        ) : (
+                            <Link
+                                to="/login"
+                                className="ml-4 bg-rose-500 hover:bg-rose-600 text-white px-6 py-2.5 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-rose-200 hover:shadow-rose-300 hover:-translate-y-0.5"
+                            >
+                                Sign In
+                            </Link>
+                        )}
+                    </div>
+
+                    <div className="flex items-center md:hidden">
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className="text-slate-500 hover:text-rose-600 p-2"
+                        >
+                            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            {isMobileMenuOpen && (
+                <div className="md:hidden bg-white border-b border-rose-100 px-4 pt-2 pb-4 shadow-xl">
+                    {renderNavLinks(true)}
+                    {user ? (
+                        <button
+                            onClick={handleLogout}
+                            className="w-full text-left mt-4 flex items-center gap-2 text-sm font-bold text-rose-600 px-4 py-3 bg-rose-50 rounded-xl"
+                        >
+                            <LogOut size={18} />
+                            Logout
+                        </button>
+                    ) : (
+                        <Link
+                            to="/login"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="block w-full mt-4 text-center bg-rose-500 text-white px-4 py-3 rounded-xl text-sm font-bold"
+                        >
+                            Sign In
+                        </Link>
+                    )}
+                </div>
+            )}
         </nav>
     );
 }

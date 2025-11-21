@@ -2,103 +2,124 @@ import React from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import './CartPage.css';
+import { Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
 
 function CartPage() {
-    const { cartItems, totalPrice, removeFromCart, updateQuantity,clearCart } = useCart();
-    const { user } = useAuth(); // Get user for role check
-    //console.log(cartItems);
-    // Determine the correct landing spot based on role
+    const { cartItems, totalPrice, removeFromCart, updateQuantity, clearCart } = useCart();
+    const { user } = useAuth();
+
     const shoppingPath = user?.role === 'retailer' ? '/admin/retailer/wholesale' : '/dashboard';
 
     if (cartItems.length === 0) {
         return (
-            <div className="cart-container cart-empty">
-                <h1>Your Cart is Empty</h1>
-                <p>Looks like you haven't added anything to your cart yet.</p>
+            <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center bg-rose-50 p-4 text-center">
+                <div className="bg-white p-12 rounded-3xl shadow-xl shadow-rose-100 max-w-md w-full">
+                    <div className="bg-rose-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <ShoppingBag size={40} className="text-rose-500" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-800 mb-2">Your cart is empty</h1>
+                    <p className="text-slate-500 mb-8">Looks like you haven't added any items yet!</p>
 
-                {/* Redirects based on role */}
-                <Link to={shoppingPath} className="cart-checkout-btn">
-                    Start Shopping
-                </Link>
+                    <Link
+                        to={shoppingPath}
+                        className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-bold rounded-2xl text-white bg-rose-500 hover:bg-rose-600 transition-all shadow-lg shadow-rose-200"
+                    >
+                        Start Shopping
+                    </Link>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="cart-container">
-            <h1>Your Shopping Cart</h1>
+        <div className="min-h-screen bg-rose-50 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-5xl mx-auto">
+                <h1 className="text-3xl font-extrabold text-slate-900 mb-8">Shopping Cart</h1>
 
-            <div className="cart-items-list">
-                {cartItems.map(item => {
-                    const listing = item.product_listings;
-                    const product = listing.products;
-                    console.log("Listing:",listing);
-                    return (
-                        <div key={item.cart_item_id} className="cart-item">
+                <div className="bg-white rounded-3xl shadow-sm border border-rose-100 overflow-hidden mb-8">
+                    <ul className="divide-y divide-slate-100">
+                        {cartItems.map(item => {
+                            const listing = item.listing;
+                            const product = listing.productInfo;
+                            return (
+                                <li key={item.cart_item_id} className="p-6 sm:p-8 hover:bg-rose-50/30 transition-colors">
+                                    <div className="flex items-center">
+                                        {/* Image */}
+                                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200">
+                                            <img
+                                                src={product.image_url || 'https://via.placeholder.com/100'}
+                                                alt={product.name}
+                                                className="h-full w-full object-cover object-center"
+                                            />
+                                        </div>
 
-                            {/* PRODUCT IMAGE */}
-                            <img
-                                src={product.image_url}
-                                alt={product.name}
-                                className="cart-item-image"
-                            />
+                                        {/* Details */}
+                                        <div className="ml-6 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex justify-between">
+                                                    <h3 className="text-lg font-bold text-slate-900">
+                                                        <Link to={`/product/${listing.product_id}`}>{product.name}</Link>
+                                                    </h3>
+                                                </div>
+                                                <p className="mt-1 text-sm text-slate-500">Sold by {listing.seller.name}</p>
+                                                <p className="mt-2 text-lg font-bold text-rose-600">₹{listing.price}</p>
+                                            </div>
 
-                            {/* PRODUCT DETAILS */}
-                            <div className="cart-item-details">
-                                <h3>{product.name}</h3>
-                                <p>₹{listing.price}</p>
+                                            {/* Controls */}
+                                            <div className="mt-4 sm:mt-0 sm:ml-10 flex items-center gap-6">
+                                                <div className="flex items-center border border-slate-200 rounded-xl">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={item.quantity}
+                                                        onChange={(e) => updateQuantity(item, parseInt(e.target.value))}
+                                                        className="w-16 p-2 text-center border-none focus:ring-0 bg-transparent font-medium text-slate-900"
+                                                    />
+                                                </div>
 
-                                {/* Seller Name */}
-                                <p className="cart-seller">
-                                    Sold by: {listing.retailers?.name ?? "Unknown Seller"}
-                                </p>
-                            </div>
+                                                <button
+                                                    onClick={() => removeFromCart(item)}
+                                                    className="text-slate-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-lg"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
 
-                            {/* ACTIONS */}
-                            <div className="cart-item-actions">
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={item.quantity}
-                                    onChange={(e) =>
-                                        updateQuantity(item.cart_item_id, e.target.value)
-                                    }
-                                    className="cart-item-quantity"
-                                />
+                {/* Summary Section */}
+                <div className="bg-white rounded-3xl shadow-lg shadow-rose-100 border border-rose-100 p-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+                        <button
+                            onClick={() => {
+                                if (window.confirm("Are you sure you want to clear your cart?")) {
+                                    clearCart();
+                                }
+                            }}
+                            className="text-sm font-bold text-slate-500 hover:text-red-500 transition-colors"
+                        >
+                            Clear Cart
+                        </button>
 
-                                <button
-                                    onClick={() => removeFromCart(item.cart_item_id)}
-                                    className="cart-item-remove-btn"
-                                >
-                                    Remove
-                                </button>
-                            </div>
+                        <div className="text-right flex flex-col sm:items-end">
+                            <p className="text-sm text-slate-500 mb-1">Subtotal</p>
+                            <p className="text-4xl font-extrabold text-slate-900 mb-6">
+                                ₹{totalPrice.toFixed(2)}
+                            </p>
+                            <Link
+                                to="/checkout"
+                                className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-bold rounded-2xl text-white bg-rose-500 hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 w-full sm:w-auto"
+                            >
+                                Proceed to Checkout
+                                <ArrowRight className="ml-2" size={20} />
+                            </Link>
                         </div>
-                    );
-                })}
-            </div>
-
-            {/* SUMMARY */}
-            <div className="cart-summary">
-                <h2>Total: ₹{totalPrice.toFixed(2)}</h2>
-
-                <div className="cart-summary-buttons">
-                    {/* ✔ Clear Cart Button */}
-                    <button
-                        className="cart-clear-btn"
-                        onClick={() => {
-                            if (window.confirm("Are you sure you want to clear your cart?")) {
-                                clearCart();
-                            }
-                        }}
-                    >
-                        Clear Cart
-                    </button>
-
-                    <Link to="/checkout" className="cart-checkout-btn">
-                        Proceed to Checkout
-                    </Link>
+                    </div>
                 </div>
             </div>
         </div>

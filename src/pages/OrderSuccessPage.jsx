@@ -1,31 +1,39 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import "./OrderSuccess.css";
+import { CheckCircle, ArrowRight } from "lucide-react";
 
 function OrderSuccessPage() {
     const location = useLocation();
     const orderId = location.state?.orderId || null;
 
     return (
-        <div className="success-container">
-            <div className="success-card">
-                
-                <div className="success-icon">✔</div>
+        <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-rose-50 p-4">
+            <div className="bg-white p-10 sm:p-12 rounded-[2rem] shadow-2xl shadow-rose-100 max-w-md w-full text-center border border-rose-100">
 
-                <h1 className="success-title">Order Placed Successfully!</h1>
+                <div className="mx-auto h-24 w-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
+                    <CheckCircle className="h-12 w-12 text-green-600" />
+                </div>
 
-                <p className="success-message">
-                    Thank you for your purchase. Your order has been confirmed.
+                <h1 className="text-3xl font-extrabold text-slate-900 mb-3">
+                    Order Placed!
+                </h1>
+
+                <p className="text-slate-500 mb-8 text-lg">
+                    Your order has been confirmed and will be on its way soon.
                 </p>
 
                 {orderId && (
-                    <p className="success-order-id">
-                        <strong>Order ID:</strong> {orderId}
-                    </p>
+                    <div className="bg-slate-50 p-4 rounded-xl mb-8 border border-slate-100">
+                        <p className="text-sm text-slate-500 uppercase tracking-wide font-bold mb-1">Order ID</p>
+                        <p className="text-xl font-mono font-bold text-slate-800">#{orderId}</p>
+                    </div>
                 )}
 
-                <Link to="/dashboard" className="success-button">
-                    Continue Shopping
+                <Link
+                    to="/dashboard"
+                    className="inline-flex items-center justify-center w-full px-8 py-4 border border-transparent text-lg font-bold rounded-2xl text-white bg-rose-500 hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 hover:-translate-y-1"
+                >
+                    Continue Shopping <ArrowRight className="ml-2" size={20} />
                 </Link>
             </div>
         </div>

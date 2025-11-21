@@ -1,13 +1,12 @@
-// src/pages/Profile.jsx
-import  Supabase from '../utils/Database';
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState, useContext } from "react";
 import { AuthContext } from '../context/AuthContext';
-import './Profile.css'; // optional styling file
+import Supabase from '../utils/Database';
+import { User, LogOut, ShoppingCart, Settings } from 'lucide-react';
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const { user, loading, setUser, setSession} = useContext(AuthContext);
+  const { user, loading, setUser, setSession } = useContext(AuthContext);
 
   const handleLogout = async () => {
     await Supabase.auth.signOut();
@@ -16,27 +15,60 @@ function ProfilePage() {
     navigate("/");
   };
 
-  return (
-    <div className="profile-container">
-      {/* LEFT SIDEBAR */}
-      <aside className="profile-sidebar">
-        <h2 className="sidebar-title">Your Profile</h2>
-        <ul className="sidebar-links">
-          <li><button onClick={() => navigate('/cart')}>Cart</button></li>
-          <li><button onClick={handleLogout}>Log Out</button></li>
-        </ul>
-      </aside>
+  if (loading) return <div className="p-10 text-center">Loading...</div>;
 
-      {/* MAIN CONTENT */}
-      <main className="profile-main">
-        {user && !loading ? (
-          <>
-            <p>Welcome, <strong>{user.name || user.email}</strong>!</p>
-          </>
-        ) : (
-          <p>Loading user data...</p>
-        )}
-      </main>
+  return (
+    <div className="min-h-screen bg-rose-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto">
+
+        {/* Profile Header Card */}
+        <div className="bg-white rounded-3xl shadow-xl shadow-rose-100 overflow-hidden mb-6">
+          <div className="bg-gradient-to-r from-rose-400 to-orange-400 h-32"></div>
+          <div className="px-8 pb-8">
+            <div className="relative -mt-12 mb-4">
+              <div className="inline-flex items-center justify-center h-24 w-24 rounded-2xl bg-white shadow-sm border-4 border-white text-rose-500">
+                <User size={48} />
+              </div>
+            </div>
+            <h1 className="text-2xl font-extrabold text-slate-900">
+              {user?.name || user?.email}
+            </h1>
+            <p className="text-slate-500 font-medium uppercase tracking-wide text-sm mt-1">
+              {user?.role} Account
+            </p>
+          </div>
+        </div>
+
+        {/* Actions Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => navigate('/cart')}
+            className="flex items-center gap-4 p-6 bg-white rounded-2xl shadow-sm border border-rose-100 hover:shadow-md hover:border-rose-200 transition-all text-left group"
+          >
+            <div className="p-3 bg-rose-100 text-rose-600 rounded-xl group-hover:bg-rose-500 group-hover:text-white transition-colors">
+              <ShoppingCart size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800">Your Cart</h3>
+              <p className="text-sm text-slate-500">View pending items</p>
+            </div>
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-4 p-6 bg-white rounded-2xl shadow-sm border border-rose-100 hover:shadow-md hover:border-rose-200 transition-all text-left group"
+          >
+            <div className="p-3 bg-slate-100 text-slate-600 rounded-xl group-hover:bg-slate-800 group-hover:text-white transition-colors">
+              <LogOut size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800">Sign Out</h3>
+              <p className="text-sm text-slate-500">Log out of your account</p>
+            </div>
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }
