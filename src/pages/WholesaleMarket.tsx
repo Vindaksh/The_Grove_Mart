@@ -4,7 +4,7 @@ import ProductCard from '../components/ProductCard';
 import { Search, Filter } from 'lucide-react';
 
 function WholesaleMarket() {
-    const [products, setProducts] = useState([]);
+    const [products, setProducts] = useState<FilteredProductInterface[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -107,8 +107,8 @@ function WholesaleMarket() {
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {filteredProducts.map((product) => (
-                                <div key={product.id || product.product_id} className="h-full">
-                                    <ProductCard product={product} />
+                                <div key={product.id || product.id} className="h-full">
+                                    <ProductCard product={product} displayDist={false} />
                                 </div>
                             ))}
                         </div>

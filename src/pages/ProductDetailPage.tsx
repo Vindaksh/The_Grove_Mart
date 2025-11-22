@@ -4,16 +4,45 @@ import { getProductById } from "../utils/Database";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext"; // Import useAuth
 import { ShoppingCart, Package, Store, AlertCircle, ChevronDown, ArrowLeft } from "lucide-react";
+import { FilteredProductInterface, ProductListingInterface } from "../utils/Interfaces";
+import useAuth from "../context/AuthContext";
 
 function ProductDetailPage() {
+    const { user } = useAuth();
     const { productId } = useParams();
+    const [product, setProduct] = useState<FilteredProductInterface|null>(null);
     const navigate = useNavigate();
+<<<<<<< HEAD:src/pages/ProductDetailPage.jsx
     const { user } = useAuth(); // Get current user
     const [product, setProduct] = useState(null);
+=======
+>>>>>>> b1f57dec718659b4685d8be7db439178f16ef455:src/pages/ProductDetailPage.tsx
     const [loading, setLoading] = useState(true);
 
+    const [coord, setCoord] = useState<{lat:number, lng:number}|null>(null);
+
     const { addToCart } = useCart();
-    const [selectedListing, setSelectedListing] = useState(null);
+    const [selectedListing, setSelectedListing] = useState<ProductListingInterface|null>(null);
+
+    const getCurrentLocation = async (): Promise<{ lat: number, lng: number } | null> => {
+        return new Promise((resolve, reject) => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude: lat, longitude: lng } = position.coords;
+                        resolve({ lat, lng });
+                    },
+                    (error) => {
+                        console.error("Error getting location: ", error);
+                        reject(null);
+                    }
+                );
+            } else {
+                console.error("Geolocation not supported");
+                reject(null);
+            }
+        });
+    };
 
     // Determine who we want to buy from
     // If I am a Retailer -> I buy from Wholesalers
@@ -22,6 +51,7 @@ function ProductDetailPage() {
 
     useEffect(() => {
         const loadProduct = async () => {
+<<<<<<< HEAD:src/pages/ProductDetailPage.jsx
             const data = await getProductById(productId);
 
             if (data) {
@@ -45,6 +75,28 @@ function ProductDetailPage() {
                     const bestOption = sorted.find(l => l.stock > 0) || sorted[0];
                     setSelectedListing(bestOption);
                 }
+=======
+            let targCoord:{lat:number, lng:number}|undefined = undefined;
+            if(coord) {
+                targCoord = coord;
+            } else {
+                const newCoord = await getCurrentLocation();
+                if (newCoord) {
+                    targCoord = newCoord;
+                    setCoord(newCoord);
+                } else if (user && user.location) {
+                    targCoord = { lat: user.location.latitude, lng: user.location.longitude };
+                    setCoord({ lat: user.location.latitude, lng: user.location.longitude })
+                }
+            }
+            const data = await getProductById(productId!, targCoord);
+            setProduct(data);
+
+            if (data?.listings?.length! > 0) {
+                // Sort by price (cheapest first)
+                const sorted = [...data!.listings].sort((a, b) => a.price - b.price);
+                setSelectedListing(sorted[0]);
+>>>>>>> b1f57dec718659b4685d8be7db439178f16ef455:src/pages/ProductDetailPage.tsx
             }
             setLoading(false);
         };
@@ -63,6 +115,7 @@ function ProductDetailPage() {
         </div>
     );
 
+<<<<<<< HEAD:src/pages/ProductDetailPage.jsx
     // Check if we found any sellers matching our criteria
     if (product.listings.length === 0) {
         return (
@@ -79,15 +132,18 @@ function ProductDetailPage() {
     }
 
     const isInStock = selectedListing?.stock > 0;
+=======
+    const isInStock = selectedListing?.stock! > 0;
+>>>>>>> b1f57dec718659b4685d8be7db439178f16ef455:src/pages/ProductDetailPage.tsx
 
-    const handleSellerChange = (e) => {
+    const handleSellerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const listingId = e.target.value;
-        const chosen = product.listings.find((l) => l.product_listings_id === listingId);
-        setSelectedListing(chosen);
+        const chosen = product.listings.find((l) => l.listing_id === listingId);
+        setSelectedListing(chosen!);
     };
 
     const handleAddToCart = () => {
-        if (selectedListing) addToCart(selectedListing);
+        if (selectedListing) addToCart(selectedListing.listing_id);
     };
 
     const availableListings = product.listings.filter(l => l.stock > 0);
@@ -113,7 +169,7 @@ function ProductDetailPage() {
                         {/* Left Column: Image */}
                         <div className="relative h-96 lg:h-full min-h-[400px] bg-rose-50/50 p-8 flex items-center justify-center">
                             <img
-                                src={product.image_url || 'https://via.placeholder.com/500'}
+                                src={product.imageURL || 'https://via.placeholder.com/500'}
                                 alt={product.name}
                                 className="max-h-full w-auto object-contain mix-blend-multiply drop-shadow-xl hover:scale-105 transition-transform duration-500"
                             />
@@ -154,12 +210,18 @@ function ProductDetailPage() {
                                     <div className="relative">
                                         <select
                                             className="appearance-none block w-full pl-4 pr-12 py-4 text-base font-medium text-slate-700 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all cursor-pointer shadow-sm hover:border-rose-300"
-                                            value={selectedListing?.product_listings_id || ""}
+                                            value={selectedListing?.listing_id || ""}
                                             onChange={handleSellerChange}
                                         >
+<<<<<<< HEAD:src/pages/ProductDetailPage.jsx
                                             {dropdownOptions.map((l) => (
                                                 <option key={l.product_listings_id} value={l.product_listings_id}>
                                                     {l.seller?.name ?? "Unknown Seller"} — ₹{l.price}
+=======
+                                            {product.listings.map((l) => (
+                                                <option key={l.listing_id} value={l.listing_id}>
+                                                    {l.seller?.name ?? "Unknown Seller"} — ₹{l.price} {l.stock < 5 ? `(Only ${l.stock} left!)`:''}{l.distance?`— ${l.distance.toFixed(2)} km`:''}
+>>>>>>> b1f57dec718659b4685d8be7db439178f16ef455:src/pages/ProductDetailPage.tsx
                                                 </option>
                                             ))}
                                         </select>

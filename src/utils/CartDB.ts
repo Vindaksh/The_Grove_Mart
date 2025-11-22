@@ -4,8 +4,8 @@ import { CartItemInterface, ListingInterface, UserInterface } from "./Interfaces
 
 export async function upsertCart(user: UserInterface, listing: ListingInterface) {
     const { data, error } = await Supabase.rpc("upsert_cart_item", {
-        p_user_id: user.id,
-        p_product_listing_id: listing.product_listings_id
+        p_user_id: userId,
+        p_product_listing_id: listingId
     });
 
     return { data, error };

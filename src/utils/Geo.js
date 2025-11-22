@@ -5,37 +5,36 @@ export async function getLatLongFromAddress(
     pincode,
     country
 ) {
-    const POSITIONSTACK_KEY = "f4d1e546ecd0ee8a734fa189db8ef64f"; // <-- replace with your key
-
-    // Positionstack accepts a single query string
     const query = `${address1} ${address2 || ""} ${city} ${pincode} ${country}`.trim();
 
-    const url = `http://api.positionstack.com/v1/forward?access_key=${POSITIONSTACK_KEY}&query=${encodeURIComponent(query)}&limit=1`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+        query
+    )}&key=${import.meta.env.VITE_GMAP_KEY}`;
 
     try {
         const res = await fetch(url);
+
         if (!res.ok) {
-            console.error("PositionStack request failed:", res.status);
+            console.error("Google Maps Geocoding request failed:", res.status);
             return null;
         }
 
         const data = await res.json();
-        console.log("📍 PositionStack response:", data);
+        console.log("📍 Google Geocoding response:", data);
 
-        if (!data || !data.data || data.data.length === 0) {
+        if (!data.results || data.results.length === 0) {
             console.warn("⚠️ No geocode results");
             return null;
         }
 
-        const loc = data.data[0];
+        const loc = data.results[0].geometry.location;
 
         return {
-            lat: loc.latitude,
-            lng: loc.longitude
+            lat: loc.lat,
+            lng: loc.lng,
         };
-
     } catch (err) {
-        console.error("🌍 PositionStack geocode error:", err);
+        console.error("🌍 Google Maps geocode error:", err);
         return null;
     }
 }

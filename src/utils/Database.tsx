@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "./DatabaseInterfaces";
 import { UserInterface, UserDataInterface } from "./Interfaces";
+import { FilterInterface, getFilteredListings, groupListingsByProduct } from "./productsDB";
 
 const SUPABASE_URL = "https://hopvgsttpmoofwlxhkbx.supabase.co";
 const SUPABASE_KEY = "sb_publishable_1TvVZv76Cmle6-R_J8b08g_55S7cK5C";

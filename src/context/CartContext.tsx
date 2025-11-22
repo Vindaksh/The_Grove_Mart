@@ -13,7 +13,7 @@ import { useAuth } from "./AuthContext";
 interface CartContextInterface {
     cartItems: CartItemInterface[];
     totalPrice: number;
-    addToCart: (listing: ListingInterface) => Promise<void>;
+    addToCart: (listingId: string) => Promise<void>;
     removeFromCart: (item: CartItemInterface) => Promise<void>;
     updateQuantity: (item: CartItemInterface, newQty: number) => Promise<void>;
     clearCart: () => Promise<void>;
@@ -46,7 +46,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const loadCart = async () => {
             if (!user) return;
 
-            const items = await getCartItems(user);
+            const items = await getCartItems(user.id);
             setCartItems(items);
         };
 
