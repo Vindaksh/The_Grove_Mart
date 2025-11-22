@@ -14,7 +14,7 @@ function NavBar() {
 
     const handleLogout = async () => {
         await logout();
-        if (!error) navigate('/');
+        navigate('/');
     };
 
     const getRoleLandingPath = (role) => {
@@ -53,12 +53,12 @@ function NavBar() {
         const NonMobWrapper = ({ children }) => {
             return (
                 <React.Fragment>
-                    { children }
+                    {children}
                 </React.Fragment>
             );
         }
 
-        const Wrapper = mobile? MobWrapper : NonMobWrapper;
+        const Wrapper = mobile ? MobWrapper : NonMobWrapper;
 
         return (
             <Wrapper>

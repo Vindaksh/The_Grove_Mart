@@ -29,48 +29,63 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const loadData = async () => {
-            const productData = await getAllProducts();
-            const sellerData = await getAllRetailers(); // Sellers table already filtered by role
+            try {
+                const productData = await getAllProducts();
+                const sellerData = await getAllRetailers();
 
-            if (!user) return;
+                // 1. Determine "Who am I buying from?"
+                // If guest or customer -> buy from Retailers
+                // If Retailer -> buy from Wholesalers
+                let targetSellerRole = 'retailer';
 
-            // Determine which sellers to show listings from
-            const allowedRole = user.role === "customer" ? "retailer" : "wholesaler";
-            const allowedSellerIds = sellerData
-                .filter(s => s.user_role === allowedRole)
-                .map(s => s.seller_id);
+                if (user?.role === 'retailer') {
+                    targetSellerRole = 'wholesaler';
+                }
 
-            // Filter listing table
-            const cleaned = productData
-                .map(p => {
-                    const allowedListings = (p.listings || []).filter(l =>
-                        allowedSellerIds.includes(l.seller_id)
-                    );
-                    return { ...p, listings: allowedListings };
-                })
-                .filter(p => p.listings.length > 0)
-                .map(p => ({
-                    ...p,
-                    lowest_price: lowestListingPrice(p)
-                }));
+                // 2. Get IDs of valid sellers
+                const allowedSellerIds = sellerData
+                    .filter(s => s.user_role === targetSellerRole)
+                    .map(s => s.seller_id);
 
-            // Compute price bounds
-            const allPrices = cleaned.flatMap(p => p.listings.map(l => l.price));
-            const minP = Math.min(...allPrices);
-            const maxP = Math.max(...allPrices);
+                // 3. Filter listings to only show those sellers
+                const cleaned = productData
+                    .map(p => {
+                        // If p.listings is undefined, default to empty array
+                        const listings = p.listings || [];
+                        const allowedListings = listings.filter(l =>
+                            allowedSellerIds.includes(l.seller_id)
+                        );
+                        return { ...p, listings: allowedListings };
+                    })
+                    .filter(p => p.listings.length > 0) // Remove products with no valid listings
+                    .map(p => ({
+                        ...p,
+                        lowest_price: lowestListingPrice(p)
+                    }));
 
-            setProducts(cleaned);
-            setFiltered(cleaned);
-            setPriceBounds({ min: minP, max: maxP });
-            setMinPrice(minP);
-            setMaxPrice(maxP);
+                // 4. Set State
+                if (cleaned.length > 0) {
+                    const allPrices = cleaned.flatMap(p => p.listings.map(l => l.price));
+                    const minP = Math.min(...allPrices);
+                    const maxP = Math.max(...allPrices);
+                    setPriceBounds({ min: minP, max: maxP });
+                    setMinPrice(minP);
+                    setMaxPrice(maxP);
+                }
 
-            // Only retailers if customer
-            setRetailers(
-                sellerData.filter(s => s.user_role === allowedRole)
-            );
+                setProducts(cleaned);
+                setFiltered(cleaned);
 
-            setLoading(false);
+                // 5. Set Retailer Filter List
+                setRetailers(
+                    sellerData.filter(s => s.user_role === targetSellerRole)
+                );
+
+            } catch (err) {
+                console.error("Dashboard Error:", err);
+            } finally {
+                setLoading(false);
+            }
         };
 
         loadData();
