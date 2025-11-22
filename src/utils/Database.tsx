@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "./DatabaseInterfaces";
 import { UserInterface, UserDataInterface } from "./Interfaces";
+import { FilterInterface, getFilteredListings, groupListingsByProduct } from "./productsDB";
 
 const SUPABASE_URL = "https://hopvgsttpmoofwlxhkbx.supabase.co";
 const SUPABASE_KEY = "sb_publishable_1TvVZv76Cmle6-R_J8b08g_55S7cK5C";
@@ -69,45 +70,17 @@ export const updatePassword = async (user: UserInterface, newPassword: string) =
     }
   };
 
-export const getProductById = async (productId: string) => {
-    const { data, error } = await Supabase
-        .from("products")
-        .select(`
-            id: product_id,
-            name,
-            description,
-            image_url,
-            listings: product_listings (
-                product_listings_id,
-                price,
-                stock,
-                seller_id,
-                seller: retailers (
-                    user_id,
-                    name,
-                    location
-                )
-            )
-        `)
-        .eq("product_id", productId)
-        .single();
-
-    if (error) {
-        console.error("Error fetching product:", error);
-        return null;
+export const getProductById = async (productId: string, coord?: {lat:number, lng:number}) => {
+    let filter: FilterInterface = {productId};
+    if(coord) {
+        filter.distFrom = coord;
     }
-
-    // Compute lowest price
-    const lowestPrice =
-        data.listings?.length > 0
-            ? Math.min(...data.listings.map((l: any) => l.price))
-            : null;
-
-    return {
-        ...data,
-        listings: data.listings.map((i)=>({...i, productInfo: {name:data.name, image_url:data.image_url, description:data.description}})),
-        lowest_price: lowestPrice,
-    };
+    const listings = await getFilteredListings(filter);
+    if(!listings) {
+        console.error("Did not find product");
+    }
+    const product = groupListingsByProduct(listings!)[0];
+    return product;
 };
 
 
@@ -145,17 +118,32 @@ export const getProductById = async (productId: string) => {
     });
 };
 
-export default Supabase;
 export async function getAllRetailers() {
     const { data, error } = await Supabase
-        .from("sellers")     // <-- replace with correct table name if different
-        .select("seller_id, name, user_role")
-        .eq("user_role", "retailer");
-
+    .from("users")
+    .select("id: user_id, name, role: user_role")
+    .eq("user_role", "retailer");
+    
     if (error) {
         console.error("Error fetching retailers:", error);
         return [];
     }
-
+    
     return data;
 }
+
+export async function getAllWholesalers() {
+    const { data, error } = await Supabase
+    .from("users")
+    .select("id: user_id, name, role: user_role")
+    .eq("user_role", "wholesaler");
+    
+    if (error) {
+        console.error("Error fetching wholesalers:", error);
+        return [];
+    }
+    
+    return data;
+}
+
+export default Supabase;

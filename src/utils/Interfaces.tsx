@@ -24,7 +24,7 @@ export type ListingInterface = {
     seller_id: string;
     seller: {
         name: string;
-        location: unknown;
+        role: 'customer'|'retailer'|'wholesaler';
     };
     productInfo: {
         name: string;
@@ -75,4 +75,54 @@ export type AddressInterface = {
 export type OnlinePaymentInterface = {
     payment_ref: string|null;
     payment_mode: "offline";
+}
+
+export type UserRole = 'customer' | 'retailer' | 'wholesaler';
+
+// 1. Updated Seller Interface
+export type SellerInterface = {
+    id: string;
+    name: string;
+    role: UserRole;
+}
+
+// 2. Updated FilteredListings Interface (Flat data from RPC)
+export type FilteredListingsInterface = {
+    listing_id: string;
+    price: number;
+    stock: number;
+    seller_id: string;
+    seller_name: string;
+    seller_role: UserRole;
+    distance_km: number;
+    relevance_score: number;
+    product_id: string;
+    product_name: string;
+    product_description: string;
+    product_image_url: string;
+    category_ids: string[];
+}
+
+// 3. Updated ProductListing Interface (Nested data after conversion)
+export type ProductListingInterface = {
+    listing_id: string;
+    price: number;
+    stock: number;
+    distance: number;
+    seller: SellerInterface;
+}
+
+// 4. FilteredProduct Interface remains the same (as it groups the listings)
+export type FilteredProductInterface = {
+    id: string;
+    name: string;
+    description: string;
+    imageURL: string;
+    categoryIDs: string[];
+    relevance: number;
+    minDist: number;
+    minPrice: number;
+    avgPrice: number;
+    maxPrice: number;
+    listings: ProductListingInterface[];
 }

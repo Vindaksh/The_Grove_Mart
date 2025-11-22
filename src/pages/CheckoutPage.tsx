@@ -12,6 +12,7 @@ import { getSavedAddresses, saveAddressForUser } from "../utils/AdressDB";
 import { getLatLongFromAddress } from "../utils/Geo";
 import { MapPin, CreditCard, Truck, CheckCircle, AlertCircle } from 'lucide-react';
 import { updateOrderLatLng } from '../utils/AdressDB';
+import { AddressInterface } from '../utils/Interfaces';
 
 function CheckoutPage() {
     const { cartItems, totalPrice, refreshCart } = useCart();
@@ -23,17 +24,19 @@ function CheckoutPage() {
     const [city, setCity] = useState('');
     const [pincode, setPincode] = useState('');
     const [country, setCountry] = useState('India');
-
-    const [paymentMethod, setPaymentMethod] = useState('cod');
-    const [savedAddresses, setSavedAddresses] = useState([]);
-    const [selectedSavedAddressId, setSelectedSavedAddressId] = useState(null);
+    
+    const [savedAddresses, setSavedAddresses] = useState<AddressInterface[]>([]);
+    const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string|null>(null);
     const [saveThisAddress, setSaveThisAddress] = useState(false);
+    
+    const [paymentMethod, setPaymentMethod] = useState('cod');
+
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const loadAddresses = async () => {
             if (!user) return;
-            const list = await getSavedAddresses(user.id);
+            const list = await getSavedAddresses(user);
             setSavedAddresses(list || []);
         };
         loadAddresses();
@@ -68,7 +71,7 @@ function CheckoutPage() {
         }
     };
 
-    const handleSubmitOrder = async (e) => {
+    const handleSubmitOrder = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
 
@@ -80,9 +83,11 @@ function CheckoutPage() {
 
         const coords = await getLatLongFromAddress(address1, address2, city, pincode, country);
 
+        var addressID: string|null = null;
         if (saveThisAddress && !selectedSavedAddressId) {
             try {
-                await saveAddressForUser(user.id, { address1, address2, city, pincode, country }, coords);
+                const address = await saveAddressForUser(user, { address1, address2, city, pincode, country, lat:coords?.lat??null, lng:coords?.lng??null });
+                addressID = address!.address_id;
             } catch (err) {
                 console.warn('Failed to save address', err);
             }
@@ -95,7 +100,7 @@ function CheckoutPage() {
             return;
         }
 
-        const address = { address1, address2, city, pincode, country };
+        const address = { address1, address2, city, pincode, country, lat:coords?.lat??null, lng:coords?.lng??null, address_id: addressID };
         const order = await createOrder(user, payment, address);
 
         if (!order) {
@@ -128,7 +133,10 @@ function CheckoutPage() {
         );
     }
 
-    const InputField = ({ label, ...props }) => (
+    interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+        label: string;
+    }
+    const InputField: React.FC<InputFieldProps> = ({ label, ...props }) => (
         <div className="mb-4">
             <label className="block text-sm font-bold text-slate-700 mb-1.5">{label}</label>
             <input
@@ -169,7 +177,7 @@ function CheckoutPage() {
                                         >
                                             <option value="">-- Select saved address --</option>
                                             {savedAddresses.map(addr => (
-                                                <option key={addr.address_id} value={addr.address_id}>
+                                                <option key={addr.address_id} value={addr.address_id!}>
                                                     {addr.address1}, {addr.city}
                                                 </option>
                                             ))}

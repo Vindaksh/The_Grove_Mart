@@ -3,23 +3,61 @@ import { useParams } from "react-router-dom";
 import { getProductById } from "../utils/Database";
 import { useCart } from "../context/CartContext";
 import { ShoppingCart, Package, Store, AlertCircle } from "lucide-react";
+import { FilteredProductInterface, ProductListingInterface } from "../utils/Interfaces";
+import useAuth from "../context/AuthContext";
 
 function ProductDetailPage() {
+    const { user } = useAuth();
     const { productId } = useParams();
-    const [product, setProduct] = useState(null);
+    const [product, setProduct] = useState<FilteredProductInterface|null>(null);
     const [loading, setLoading] = useState(true);
 
+    const [coord, setCoord] = useState<{lat:number, lng:number}|null>(null);
+
     const { addToCart } = useCart();
-    const [selectedListing, setSelectedListing] = useState(null);
+    const [selectedListing, setSelectedListing] = useState<ProductListingInterface|null>(null);
+
+    const getCurrentLocation = async (): Promise<{ lat: number, lng: number } | null> => {
+        return new Promise((resolve, reject) => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude: lat, longitude: lng } = position.coords;
+                        resolve({ lat, lng });
+                    },
+                    (error) => {
+                        console.error("Error getting location: ", error);
+                        reject(null);
+                    }
+                );
+            } else {
+                console.error("Geolocation not supported");
+                reject(null);
+            }
+        });
+    };
 
     useEffect(() => {
         const loadProduct = async () => {
-            const data = await getProductById(productId);
+            let targCoord:{lat:number, lng:number}|undefined = undefined;
+            if(coord) {
+                targCoord = coord;
+            } else {
+                const newCoord = await getCurrentLocation();
+                if (newCoord) {
+                    targCoord = newCoord;
+                    setCoord(newCoord);
+                } else if (user && user.location) {
+                    targCoord = { lat: user.location.latitude, lng: user.location.longitude };
+                    setCoord({ lat: user.location.latitude, lng: user.location.longitude })
+                }
+            }
+            const data = await getProductById(productId!, targCoord);
             setProduct(data);
 
-            if (data?.listings?.length > 0) {
+            if (data?.listings?.length! > 0) {
                 // Sort by price (cheapest first)
-                const sorted = [...data.listings].sort((a, b) => a.price - b.price);
+                const sorted = [...data!.listings].sort((a, b) => a.price - b.price);
                 setSelectedListing(sorted[0]);
             }
             setLoading(false);
@@ -39,16 +77,16 @@ function ProductDetailPage() {
         </div>
     );
 
-    const isInStock = selectedListing?.stock > 0;
+    const isInStock = selectedListing?.stock! > 0;
 
-    const handleSellerChange = (e) => {
+    const handleSellerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const listingId = e.target.value;
-        const chosen = product.listings.find((l) => l.product_listings_id === listingId);
-        setSelectedListing(chosen);
+        const chosen = product.listings.find((l) => l.listing_id === listingId);
+        setSelectedListing(chosen!);
     };
 
     const handleAddToCart = () => {
-        if (selectedListing) addToCart(selectedListing);
+        if (selectedListing) addToCart(selectedListing.listing_id);
     };
 
     return (
@@ -59,7 +97,7 @@ function ProductDetailPage() {
                     {/* Left Column: Image */}
                     <div className="relative h-96 lg:h-full min-h-[400px] bg-rose-50/50 p-8 flex items-center justify-center">
                         <img
-                            src={product.image_url || 'https://via.placeholder.com/500'}
+                            src={product.imageURL || 'https://via.placeholder.com/500'}
                             alt={product.name}
                             className="max-h-full w-auto object-contain mix-blend-multiply drop-shadow-xl hover:scale-105 transition-transform duration-500"
                         />
@@ -102,12 +140,12 @@ function ProductDetailPage() {
                                 <div className="relative">
                                     <select
                                         className="block w-full pl-4 pr-10 py-3 text-base border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm rounded-xl shadow-sm bg-white"
-                                        value={selectedListing?.product_listings_id || ""}
+                                        value={selectedListing?.listing_id || ""}
                                         onChange={handleSellerChange}
                                     >
                                         {product.listings.map((l) => (
-                                            <option key={l.product_listings_id} value={l.product_listings_id}>
-                                                {l.seller?.name ?? "Unknown Seller"} — ₹{l.price}
+                                            <option key={l.listing_id} value={l.listing_id}>
+                                                {l.seller?.name ?? "Unknown Seller"} — ₹{l.price} — {l.distance.toFixed(2)} km
                                             </option>
                                         ))}
                                     </select>

@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         const { data: authListener } = Supabase.auth.onAuthStateChange(
             async (event, newSession) => {
-                console.log("session changed", event, newSession);
+                //console.log("session changed", event, newSession);
                 setSession(newSession);
             }
         );
@@ -114,7 +114,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
             
             const userData = await getUserData(session);
-            console.log(userData);
+            //console.log(userData);
             setUser(userData);
             setLoading(false);
         }

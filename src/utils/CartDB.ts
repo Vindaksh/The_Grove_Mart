@@ -2,10 +2,10 @@ import { User } from "@supabase/supabase-js";
 import Supabase from "./Database";
 import { CartItemInterface, ListingInterface, UserInterface } from "./Interfaces";
 
-export async function upsertCart(user:UserInterface, listing:ListingInterface) {
+export async function upsertCart(userId:string, listingId:string) {
     const { data, error } = await Supabase.rpc("upsert_cart_item", {
-        p_user_id: user.id,
-        p_product_listing_id: listing.product_listings_id
+        p_user_id: userId,
+        p_product_listing_id: listingId
     });
 
     return { data, error };
@@ -14,7 +14,7 @@ export async function upsertCart(user:UserInterface, listing:ListingInterface) {
 // ---------------------------
 // 3) Get all items in cart (for CartPage)
 // ---------------------------
-export async function getCartItems(user:UserInterface) {
+export const getCartItems = async (userId:string) => {
     const { data, error } = await Supabase
         .from("cart_items1")
         .select(`
@@ -27,7 +27,7 @@ export async function getCartItems(user:UserInterface) {
                 seller_id,
                 seller:seller_id (
                     name,
-                    location
+                    role:user_role
                 ),
                 productInfo:product_id (
                     name,
@@ -36,7 +36,7 @@ export async function getCartItems(user:UserInterface) {
                 )
             )
         `)
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
     if (error) {
         console.error("Error fetching cart items:", error);

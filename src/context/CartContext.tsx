@@ -14,7 +14,7 @@ import { useAuth } from "./AuthContext";
 interface CartContextInterface{
     cartItems: CartItemInterface[];
     totalPrice: number;
-    addToCart: (listing: ListingInterface) => Promise<void>;
+    addToCart: (listingId: string) => Promise<void>;
     removeFromCart: (item: CartItemInterface) => Promise<void>;
     updateQuantity: (item: CartItemInterface, newQty: number) => Promise<void>;
     clearCart: () => Promise<void>;
@@ -46,7 +46,7 @@ export const CartProvider:  React.FC<{ children: ReactNode }> = ({ children }) =
         const loadCart = async () => {
             if(!user) return;
 
-            const items = await getCartItems(user);
+            const items = await getCartItems(user.id);
             setCartItems(items);
         };
 
@@ -68,25 +68,20 @@ export const CartProvider:  React.FC<{ children: ReactNode }> = ({ children }) =
     // -------------------------------------------------
     // Add item to cart
     // -------------------------------------------------
-    const addToCart = async (listing: ListingInterface) => {
+    const addToCart = async (listingId: string) => {
     if (!user) {
         alert("Please sign in to add to cart.");
         return;
     }
 
-    if (!listing?.product_listings_id) {
-        console.error("addToCart called without a valid listing:", listing);
-        return;
-    }
-
-    const {data:addedItem, error} = await upsertCart(user, listing);
+    const {data:addedItem, error} = await upsertCart(user.id, listingId);
     if (!addedItem) {
         console.error("failed to add item to cart", error);
         return;
     }
 
     // Reload cart
-    const items = await getCartItems(user);
+    const items = await getCartItems(user.id);
     setCartItems(items);
 };
 
@@ -101,7 +96,7 @@ export const CartProvider:  React.FC<{ children: ReactNode }> = ({ children }) =
 
         if(error) console.error(error);
 
-        const items = await getCartItems(user!);
+        const items = await getCartItems(user!.id);
         setCartItems(items);
     };
 
@@ -117,7 +112,7 @@ export const CartProvider:  React.FC<{ children: ReactNode }> = ({ children }) =
 
         await updateCartQuantity(item, newQty);
 
-        const items = await getCartItems(user!);
+        const items = await getCartItems(user!.id);
         setCartItems(items);
     };
 
@@ -139,8 +134,8 @@ export const CartProvider:  React.FC<{ children: ReactNode }> = ({ children }) =
         removeFromCart,
         updateQuantity,
         clearCart,
-        refreshCart: async (user:UserInterface) => {
-            const items = await getCartItems(user);
+        refreshCart: async () => {
+            const items = await getCartItems(user!.id);
             setCartItems(items);
         }
     };
