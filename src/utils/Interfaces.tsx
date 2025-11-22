@@ -62,15 +62,15 @@ export type PaymentInterface = {
     user_id: string | null;
 }
 
-export type AddressInterface = {
-    address1: string;
-    address2: string|null;
-    city: string;
-    pincode: string;
-    country: string;
-    lat: number|null;
-    lng: number|null;
-    address_id: string|null;
+export interface AddressInterface {
+    formatted_address: string;
+    lat: number;
+    lng: number;
+}
+
+export interface SavedAddressInterface extends AddressInterface {
+    address_id: string;
+    user_id: string;
 }
 
 export type OnlinePaymentInterface = {

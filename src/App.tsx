@@ -25,19 +25,12 @@ import WholesalerOrders from './pages/WholesalerOrders';
 import WholesalerInventory from './pages/WholesalerInventory';
 
 import ProfilePage from "./pages/Profile";
-import ProfileAddressesPage from './pages/ProfileAddresses';
 
 const ALL_ROLES = ['customer', 'retailer', 'wholesaler'];
 const SELLER_ROLES = ['retailer', 'wholesaler'];
 
 function App() {
   return (
-    <>
-    <script
-      async
-      defer
-      src={`https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GMAP_KEY}&libraries=places`}
-    ></script>
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
@@ -88,7 +81,6 @@ function App() {
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>
-  </>
   );
 }
 
