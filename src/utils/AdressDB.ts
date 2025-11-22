@@ -1,12 +1,12 @@
 import Supabase from "./Database";
-import { AddressInterface, UserInterface } from "./Interfaces";
+import { AddressInterface, SavedAddressInterface, UserInterface } from "./Interfaces";
 
 type AddressInputInterface = {
     formatted_address: string,
     lat: number,
     lng: number
 }
-export async function saveAddressForUser(user: UserInterface, address: AddressInputInterface) {
+export async function saveAddressForUser(user: UserInterface, address: AddressInputInterface): Promise<SavedAddressInterface> {
     const payload = {
         user_id: user.id,
         ...address
@@ -25,7 +25,7 @@ export async function saveAddressForUser(user: UserInterface, address: AddressIn
     return data;
 }
 
-export async function getSavedAddresses(user: UserInterface) {
+export async function getSavedAddresses(user: UserInterface): Promise<SavedAddressInterface[]> {
     const { data, error } = await Supabase
         .from("saved_addresses")
         .select("*")
@@ -44,7 +44,7 @@ type AddressUpdateInterface = {
     lat?: number,
     lng?: number
 }
-export async function updateSavedAddress(addressId: string, updates: AddressUpdateInterface) {
+export async function updateSavedAddress(addressId: string, updates: AddressUpdateInterface): Promise<SavedAddressInterface> {
     const { data, error } = await Supabase
         .from("saved_addresses")
         .update(updates)
@@ -71,22 +71,4 @@ export async function deleteSavedAddress(addressId: string) {
         return false;
     }
     return true;
-}
-
-export async function updateOrderLatLng(orderId:number, lat:number, lng:number) {
-    const { data, error } = await Supabase
-        .from("orders")
-        .update({
-            lat: lat,
-            lng: lng,
-        })
-        .eq("order_id", orderId)
-        .select();
-
-    if (error) {
-        console.error("Failed to update order location:", error);
-        return null;
-    }
-
-    return data;
 }

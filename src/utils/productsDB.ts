@@ -72,6 +72,7 @@ export function groupListingsByProduct(listings: FilteredListingsInterface[]): F
                 user_role: seller_role,
             },
             productInfo: {
+                product_id: product_id,
                 name: product_name,
                 description: product_description,
                 image_url: product_image_url

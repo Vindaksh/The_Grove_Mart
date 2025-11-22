@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext"
 import { OrderInterface, OrderItemInterface } from "../utils/Interfaces";
 import { getOrders } from "../utils/OrderDB";
-import { submitCustomerFeedback } from "../utils/FeedbackDB"; // Import the new function
+import { submitCustomerFeedback } from "../utils/FeedbackDB"; 
 import { Package, Clock, CheckCircle, XCircle, Truck, ArrowLeft, Star, MessageSquare, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // Keep this import
 
 export const ProfileOrdersPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -59,6 +59,14 @@ export const ProfileOrdersPage = () => {
     } else {
       setIsFeedbackOpen(false);
       loadData(); // Refresh list to show the review is done
+    }
+  };
+
+  // 1. UPDATED HANDLER: Navigate to product detail page with the product ID and listing ID (as query parameter)
+  const handleItemClick = (productId: string, listingId: string) => {
+    if (productId && listingId) {
+      // Route: /product/PRODUCT_ID?listingId=LISTING_ID
+      navigate(`/product/${productId}?listingId=${listingId}`);
     }
   };
 
@@ -126,20 +134,33 @@ export const ProfileOrdersPage = () => {
               {/* Order Items List */}
               <ul className="space-y-3">
                 {order.order_items.map((item) => {
-                   const isDelivered = item.order_status === 'completed';
-                   const hasFeedback = item.rating && item.rating > 0;
+                  const isDelivered = item.order_status === 'completed';
+                  const hasFeedback = item.rating && item.rating > 0;
+                  
+                  // Safely extract IDs for navigation
+                  const productId = item.listing?.productInfo?.product_id;
+                  const listingId = item.listing?.product_listings_id;
 
-                   return (
-                    <li key={item.listing_id || Math.random()} className="flex flex-col sm:flex-row justify-between sm:items-center text-sm gap-3">
+                  return (
+                    <li 
+                      key={item.order_item_id} 
+                      className="flex flex-col sm:flex-row justify-between sm:items-center text-sm gap-3 p-2 -m-2 rounded-xl transition-colors group cursor-pointer hover:bg-rose-50"
+                      // 2. UPDATED onClick HANDLER: Pass both IDs
+                      onClick={() => {
+                        if (productId && listingId) {
+                            handleItemClick(productId, listingId);
+                        }
+                      }}
+                    >
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 font-bold text-xs">{item.quantity}x</div>
                         <div>
-                            <p className="font-medium text-slate-700">{item.name}</p>
+                            <p className="font-medium text-slate-700 group-hover:text-rose-600 transition-colors">{item.name}</p>
                             <p className="font-bold text-slate-900">₹{item.price}</p>
                         </div>
                       </div>
 
-                      {/* FEEDBACK BUTTON LOGIC */}
+                      {/* FEEDBACK BUTTON LOGIC - Ensure propagation is stopped */}
                       {isDelivered ? (
                           hasFeedback ? (
                               <div className="flex items-center gap-1 text-yellow-500 bg-yellow-50 px-3 py-1.5 rounded-lg text-xs font-bold border border-yellow-100">
@@ -147,9 +168,13 @@ export const ProfileOrdersPage = () => {
                                   <span>{item.rating} Stars</span>
                               </div>
                           ) : (
+                              // PREVENT NAVIGATION WHEN CLICKING THE FEEDBACK BUTTON
                               <button 
-                                onClick={() => openFeedbackModal(item)}
-                                className="flex items-center gap-2 text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-rose-100"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Stop the event from bubbling up to the <li>
+                                  openFeedbackModal(item);
+                                }}
+                                className="flex items-center gap-2 text-rose-500 hover:bg-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-rose-100"
                               >
                                 <MessageSquare size={14} />
                                 Give Feedback

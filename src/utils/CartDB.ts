@@ -15,7 +15,7 @@ export async function upsertCart(userId:string, listingId:string) {
 // ---------------------------
 // 3) Get all items in cart (for CartPage)
 // ---------------------------
-export const getCartItems = async (userId:string) => {
+export const getCartItems = async (userId:string): Promise<CartItemInterface[]> => {
     const { data, error } = await Supabase
         .from("cart_items1")
         .select(`
@@ -31,6 +31,7 @@ export const getCartItems = async (userId:string) => {
                     role:user_role
                 ),
                 productInfo:product_id (
+                    product_id,
                     name,
                     image_url,
                     description
@@ -50,7 +51,7 @@ export const getCartItems = async (userId:string) => {
 /* ---------------------------------------------------
    Delete cart item
 ----------------------------------------------------*/
-export async function removeCartItem(item:CartItemInterface) {
+export async function removeCartItem(item:CartItemInterface): Promise<boolean> {
     const { error } = await Supabase
         .from("cart_items1")
         .delete()
@@ -66,7 +67,7 @@ export async function removeCartItem(item:CartItemInterface) {
 /* ---------------------------------------------------
    5. Update quantity
 ----------------------------------------------------*/
-export async function updateCartQuantity(item:CartItemInterface, newQty:number) {
+export async function updateCartQuantity(item:CartItemInterface, newQty:number): Promise<boolean> {
     const { error } = await Supabase
         .from("cart_items1")
         .update({ quantity: newQty })

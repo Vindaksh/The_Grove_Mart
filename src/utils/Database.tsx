@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "./DatabaseInterfaces";
-import { UserInterface, UserDataInterface } from "./Interfaces";
+import { UserInterface, UserDataInterface, ProductListingInterface, FilteredProductInterface } from "./Interfaces";
 import { FilterInterface, getFilteredListings, groupListingsByProduct } from "./productsDB";
 
 const SUPABASE_URL = "https://hopvgsttpmoofwlxhkbx.supabase.co";
@@ -70,90 +70,21 @@ export const updatePassword = async (user: UserInterface, newPassword: string) =
     }
 };
 
-export const getProductById = async (productId: string) => {
-    // We explicitly join the 'users' table on the foreign key to get the name and role
-    const { data, error } = await Supabase
-        .from("products")
-        .select(`
-            id: product_id,
-            name,
-            description,
-            image_url,
-            listings: product_listings (
-                product_listings_id,
-                price,
-                stock,
-                seller_id,
-                seller: users!product_listings_seller_id_fkey (
-                    user_id,
-                    name,
-                    user_role
-                )
-            )
-        `)
-        .eq("product_id", productId)
-        .single();
-
-    if (error) {
-        console.error("Error fetching product:", error);
-        return null;
+export const getProductById = async (productId: string): Promise<FilteredProductInterface> => {
+    const listings = await getFilteredListings({productId});
+    const product = groupListingsByProduct(listings);
+    if(!product || product.length==0) {
+        console.error(`No product with id ${productId} found`);
     }
-
-    // Compute lowest price
-    const lowestPrice =
-        data.listings?.length > 0
-            ? Math.min(...data.listings.map((l: any) => l.price))
-            : null;
-
-    return {
-        ...data,
-        // Helper to attach basic product info to listings (useful for cart)
-        listings: data.listings.map((i: any) => ({
-            ...i,
-            productInfo: { name: data.name, image_url: data.image_url, description: data.description }
-        })),
-        lowest_price: lowestPrice,
-    };
+    return product[0];
 };
 
 
-export const getAllProducts = async () => {
-    const { data, error } = await Supabase
-        .from("products")
-        .select(`
-            id: product_id,
-            name,
-            description,
-            image_url,
-            listings: product_listings (
-                product_listings_id,
-                price,
-                stock,
-                seller_id,
-                seller: users!product_listings_seller_id_fkey (
-                    name,
-                    user_role,
-                    location
-                )
-            )
-        `);
+export const getAllProducts = async (): Promise<FilteredProductInterface[]> => {
+    const listings = await getFilteredListings({});
+    const products = groupListingsByProduct(listings);
 
-    if (error || !data) {
-        console.error("Error fetching all products:", error);
-        return [];
-    }
-
-    // Compute lowest price for each product
-    return data.map((product: any) => {
-        const lowestPrice = product.listings?.length
-            ? Math.min(...product.listings.map((l: any) => l.price))
-            : null;
-
-        return {
-            ...product,
-            lowest_price: lowestPrice,
-        };
-    });
+    return products;
 };
 
 export default Supabase;

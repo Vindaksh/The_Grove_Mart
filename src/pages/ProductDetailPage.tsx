@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getProductById } from "../utils/Database";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -21,6 +21,9 @@ function ProductDetailPage() {
     const { user } = useAuth();
     const { productId } = useParams();
     const navigate = useNavigate();
+    // 1. New: Get query parameters
+    const [searchParams] = useSearchParams();
+    const initialListingId = searchParams.get('listingId');
 
     const [product, setProduct] = useState<FullProduct | null>(null);
     const [loading, setLoading] = useState(true);
@@ -54,15 +57,32 @@ function ProductDetailPage() {
                 setProduct(filteredProduct);
 
                 if (relevantListings.length > 0) {
-                    const sorted = [...relevantListings].sort((a: any, b: any) => a.price - b.price);
-                    const bestOption = sorted.find((l: any) => l.stock > 0) || sorted[0];
-                    setSelectedListing(bestOption);
+                    let defaultListing: ListingInterface | undefined;
+
+                    // 3. Logic Change: Prioritize the ID from the URL query parameter
+                    if (initialListingId) {
+                        defaultListing = relevantListings.find(
+                            (l: any) => l.product_listings_id === initialListingId
+                        );
+                    }
+
+                    // 4. Fallback: If no ID was provided in the URL, or if the listing wasn't found/is irrelevant
+                    if (!defaultListing) {
+                        const sorted = [...relevantListings].sort((a: any, b: any) => a.price - b.price);
+                        // Select the best in-stock option, or just the cheapest option if nothing is in stock
+                        defaultListing = sorted.find((l: any) => l.stock > 0) || sorted[0];
+                    }
+
+                    if (defaultListing) {
+                        setSelectedListing(defaultListing);
+                    }
                 }
             }
             setLoading(false);
         };
+        // Dependency changed to include initialListingId
         loadProduct();
-    }, [productId, user]);
+    }, [productId, user, initialListingId]); 
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-rose-50 text-rose-500 font-bold animate-pulse">

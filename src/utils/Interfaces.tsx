@@ -27,6 +27,7 @@ export type ListingInterface = {
         user_role?: 'customer' | 'retailer' | 'wholesaler';
     };
     productInfo: {
+        product_id: string,
         name: string;
         image_url: string | null;
         description: string | null;
@@ -51,7 +52,7 @@ export type OrderInterface = {
 export type OrderItemInterface = {
     order_id: number;
     order_item_id: number; // Make sure this exists
-    listing_id: string;
+    listing: ListingInterface;
     name: string;
     price: number;
     quantity: number;

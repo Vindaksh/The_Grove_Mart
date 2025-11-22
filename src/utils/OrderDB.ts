@@ -25,7 +25,7 @@ export async function createOrder(buyer: UserInterface, payment: OnlinePaymentIn
 /* -----------------------------
    2. Get Orders (Customer History)
 --------------------------------*/
-export const getOrders = async (user: UserInterface, limit: number = 10) => {
+export const getOrders = async (user: UserInterface, limit: number = 10): Promise<OrderInterface[]> => {
     const { data, error } = await Supabase
         .from('orders')
         .select(`
@@ -33,7 +33,22 @@ export const getOrders = async (user: UserInterface, limit: number = 10) => {
         ordered_at,
         order_items (
             order_id,
-            listing_id,
+            listing: product_listings (
+                product_listings_id,
+                price,
+                stock,
+                seller_id,
+                seller: users (
+                    name,
+                    user_role
+                ),
+                productInfo: products (
+                    product_id,
+                    name,
+                    image_url,
+                    description
+                )
+            ),
             order_item_id,
             name,
             price,
@@ -52,7 +67,7 @@ export const getOrders = async (user: UserInterface, limit: number = 10) => {
         return [];
     }
 
-    return data as OrderInterface[] ?? [];
+    return data;
 }
 
 /* -----------------------------
@@ -65,21 +80,6 @@ export const completePayment = async (total: number): Promise<OnlinePaymentInter
         payment_mode: "offline"
     };
     return payment;
-}
-
-export async function updateOrderLatLng(orderId: number | string, lat: number, lng: number) {
-    const id = Number(orderId);
-
-    const { data, error } = await Supabase
-        .from("orders")
-        .update({ lat, lng })
-        .eq("order_id", id)
-        .select();
-
-    if (error) {
-        console.error("Error updating order coordinates:", error);
-    }
-    return data;
 }
 
 /* -----------------------------

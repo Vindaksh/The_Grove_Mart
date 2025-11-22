@@ -56,6 +56,9 @@ function CartPage() {
                             const isWholesale = listing.seller?.user_role === 'wholesaler';
                             const step = isWholesale ? 50 : 1;
                             const minQty = isWholesale ? 50 : 1;
+                            
+                            // 💡 Construct the new product detail link
+                            const productDetailLink = `/product/${listing.productInfo.product_id}?listingId=${listing.product_listings_id}`;
 
                             return (
                                 <li key={item.cart_item_id} className="p-6 sm:p-8 hover:bg-rose-50/30 transition-colors">
@@ -72,7 +75,10 @@ function CartPage() {
                                             <div className="flex-1">
                                                 <div className="flex justify-between">
                                                     <h3 className="text-lg font-bold text-slate-900">
-                                                        <Link to={`/product/${listing.product_id}`}>{product.name}</Link>
+                                                        {/* ✨ UPDATED LINK HERE */}
+                                                        <Link to={productDetailLink}>
+                                                            {product.name}
+                                                        </Link>
                                                     </h3>
                                                 </div>
                                                 <p className="mt-1 text-sm text-slate-500">Sold by {listing.seller.name}</p>
