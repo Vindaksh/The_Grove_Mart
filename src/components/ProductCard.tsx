@@ -40,23 +40,26 @@ function ProductCard({ product, displayDist }: {product:FilteredProductInterface
 
                 {/* Content */}
                 <div className="p-5 flex flex-col flex-grow">
+                    {/* Product Name */}
+                    <h3 className="text-xl font-bold text-slate-900">{name}</h3>
+
                     {/* First Row: Minimum Price + Add to Cart */}
-                    <div className="flex flex-col space-y-2">
+                    <div className="flex flex-col space-y-2 mt-2">
                         {minPriceListing ? (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center">
-                                    <span className="text-2xl font-extrabold text-slate-900">
+                                    <span className="text-2xl font-semibold text-slate-900">
                                         ₹{minPriceListing.price.toFixed(2)}
                                     </span>
                                     <span className="ml-2 text-xs text-slate-500">(min)</span>
                                 </div>
                                 <button
-                                    onClick={(e)=>{e.preventDefault(); handleAddToCart(minPriceListing)}}
+                                    onClick={(e) => { e.preventDefault(); handleAddToCart(minPriceListing) }}
                                     disabled={!minPriceListing}
                                     className="p-3 rounded-2xl bg-slate-100 text-slate-600 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                                     title="Add Cheapest to Cart"
                                 >
-                                <ShoppingCart size={20} strokeWidth={2.5} />
+                                    <ShoppingCart size={20} strokeWidth={2.5} />
                                 </button>
                             </div>
                         ) : (
@@ -77,12 +80,12 @@ function ProductCard({ product, displayDist }: {product:FilteredProductInterface
                                     <span className="ml-2 text-xs text-slate-500">(closest)</span>
                                 </div>
                                 <button
-                                    onClick={(e)=>{e.preventDefault(); handleAddToCart(minDistListing)}}
+                                    onClick={(e) => { e.preventDefault(); handleAddToCart(minDistListing) }}
                                     disabled={!minDistListing}
                                     className="p-3 rounded-2xl bg-slate-100 text-slate-600 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                                     title="Add Closest to Cart"
                                 >
-                                <ShoppingCart size={20} strokeWidth={2.5} />
+                                    <ShoppingCart size={20} strokeWidth={2.5} />
                                 </button>
                             </div>
                         </div>
