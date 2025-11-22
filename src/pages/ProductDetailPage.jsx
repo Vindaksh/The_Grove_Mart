@@ -2,34 +2,58 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getProductById } from "../utils/Database";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext"; // Import useAuth
 import { ShoppingCart, Package, Store, AlertCircle, ChevronDown, ArrowLeft } from "lucide-react";
 
 function ProductDetailPage() {
     const { productId } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth(); // Get current user
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const { addToCart } = useCart();
     const [selectedListing, setSelectedListing] = useState(null);
 
+    // Determine who we want to buy from
+    // If I am a Retailer -> I buy from Wholesalers
+    // If I am a Customer (or Guest) -> I buy from Retailers
+    const targetSellerRole = user?.role === 'retailer' ? 'wholesaler' : 'retailer';
+
     useEffect(() => {
         const loadProduct = async () => {
             const data = await getProductById(productId);
-            setProduct(data);
 
-            if (data?.listings?.length > 0) {
-                const sorted = [...data.listings].sort((a, b) => a.price - b.price);
-                setSelectedListing(sorted[0]);
+            if (data) {
+                // 1. Filter listings based on our role
+                // Only keep listings where the seller's role matches our target
+                const relevantListings = (data.listings || []).filter(l => {
+                    const role = l.seller?.user_role?.toLowerCase();
+                    return role === targetSellerRole;
+                });
+
+                console.log("All Listings:", data.listings);
+                console.log("Relevant Listings:", relevantListings);
+
+                // 2. Update data with filtered listings
+                data.listings = relevantListings;
+                setProduct(data);
+
+                if (relevantListings.length > 0) {
+                    const sorted = [...relevantListings].sort((a, b) => a.price - b.price);
+                    // Find first in-stock item, or default to the first item
+                    const bestOption = sorted.find(l => l.stock > 0) || sorted[0];
+                    setSelectedListing(bestOption);
+                }
             }
             setLoading(false);
         };
         loadProduct();
-    }, [productId]);
+    }, [productId, user]);
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-rose-50 text-rose-500 font-bold animate-pulse">
-            Loading details...
+            Loading fresh details...
         </div>
     );
 
@@ -38,6 +62,21 @@ function ProductDetailPage() {
             Product not found.
         </div>
     );
+
+    // Check if we found any sellers matching our criteria
+    if (product.listings.length === 0) {
+        return (
+            <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center bg-rose-50 p-8 text-center">
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">No Sellers Found</h2>
+                <p className="text-slate-500 mb-6">
+                    {user?.role === 'retailer'
+                        ? "No wholesalers are currently selling this item."
+                        : "This item is not currently available in retail stores."}
+                </p>
+                <button onClick={() => navigate(-1)} className="text-rose-600 font-bold hover:underline">Go Back</button>
+            </div>
+        );
+    }
 
     const isInStock = selectedListing?.stock > 0;
 
@@ -51,11 +90,13 @@ function ProductDetailPage() {
         if (selectedListing) addToCart(selectedListing);
     };
 
+    const availableListings = product.listings.filter(l => l.stock > 0);
+    const dropdownOptions = availableListings.length > 0 ? availableListings : product.listings;
+
     return (
         <div className="min-h-[calc(100vh-80px)] bg-rose-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
 
-                {/* BACK BUTTON */}
                 <button
                     onClick={() => navigate(-1)}
                     className="flex items-center gap-2 text-slate-500 hover:text-rose-600 font-bold mb-6 transition-colors group"
@@ -88,7 +129,6 @@ function ProductDetailPage() {
                                     {product.description || "Fresh, locally sourced, and ready for delivery directly to your doorstep."}
                                 </p>
 
-                                {/* Stock Status Badge */}
                                 <div className="flex items-center gap-2 mb-8">
                                     {isInStock ? (
                                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-bold">
@@ -106,11 +146,10 @@ function ProductDetailPage() {
                                     )}
                                 </div>
 
-                                {/* Seller Selection */}
                                 <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100">
                                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3">
                                         <Store size={18} className="text-rose-500" />
-                                        Select a Seller
+                                        Select a {targetSellerRole === 'wholesaler' ? 'Wholesaler' : 'Seller'}
                                     </label>
                                     <div className="relative">
                                         <select
@@ -118,9 +157,9 @@ function ProductDetailPage() {
                                             value={selectedListing?.product_listings_id || ""}
                                             onChange={handleSellerChange}
                                         >
-                                            {product.listings.map((l) => (
+                                            {dropdownOptions.map((l) => (
                                                 <option key={l.product_listings_id} value={l.product_listings_id}>
-                                                    {l.seller?.name ?? "Unknown Seller"} — ₹{l.price} {l.stock < 5 ? `(Only ${l.stock} left!)` : ''}
+                                                    {l.seller?.name ?? "Unknown Seller"} — ₹{l.price}
                                                 </option>
                                             ))}
                                         </select>
@@ -131,7 +170,6 @@ function ProductDetailPage() {
                                 </div>
                             </div>
 
-                            {/* Action Area */}
                             <div className="border-t border-slate-100 pt-8 mt-4">
                                 <div className="flex items-end justify-between mb-6">
                                     <div>

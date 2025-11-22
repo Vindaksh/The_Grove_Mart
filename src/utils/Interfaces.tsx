@@ -2,19 +2,19 @@ export type UserInterface = {
     id: string,
     name: string,
     email: string,
-    location:{
+    location: {
         latitude: number,
         longitude: number
-    }|null,
-    role: 'customer'|'retailer'|'wholesaler'
+    } | null,
+    role: 'customer' | 'retailer' | 'wholesaler'
 };
 
 export type UserDataInterface = { //for raw get_user_data return
     user_id: string,
     name: string,
-    latitude: number|null,
-    longitude: number|null,
-    role: 'customer'|'retailer'|'wholesaler'
+    latitude: number | null,
+    longitude: number | null,
+    role: 'customer' | 'retailer' | 'wholesaler'
 };
 
 export type ListingInterface = {
@@ -25,6 +25,7 @@ export type ListingInterface = {
     seller: {
         name: string;
         location: unknown;
+        user_role?: 'customer' | 'retailer' | 'wholesaler';
     };
     productInfo: {
         name: string;
@@ -63,16 +64,16 @@ export type PaymentInterface = {
 
 export type AddressInterface = {
     address1: string;
-    address2: string|null;
+    address2: string | null;
     city: string;
     pincode: string;
     country: string;
-    lat: number|null;
-    lng: number|null;
-    address_id: string|null;
+    lat: number | null;
+    lng: number | null;
+    address_id: string | null;
 }
 
 export type OnlinePaymentInterface = {
-    payment_ref: string|null;
+    payment_ref: string | null;
     payment_mode: "offline";
 }

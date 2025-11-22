@@ -11,6 +11,16 @@ import { getLatLongFromAddress } from "../utils/Geo";
 import { MapPin, CreditCard, Truck, AlertCircle, ArrowLeft } from 'lucide-react';
 import { updateOrderLatLng } from '../utils/AdressDB';
 
+const InputField = ({ label, ...props }) => (
+    <div className="mb-4">
+        <label className="block text-sm font-bold text-slate-700 mb-1.5">{label}</label>
+        <input
+            className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all font-medium text-slate-800"
+            {...props}
+        />
+    </div>
+);
+
 function CheckoutPage() {
     const { cartItems, totalPrice, refreshCart } = useCart();
     const { user } = useAuth();
@@ -31,7 +41,7 @@ function CheckoutPage() {
     useEffect(() => {
         const loadAddresses = async () => {
             if (!user) return;
-            const list = await getSavedAddresses(user.id);
+            const list = await getSavedAddresses(user);
             setSavedAddresses(list || []);
         };
         loadAddresses();
@@ -80,7 +90,7 @@ function CheckoutPage() {
 
         if (saveThisAddress && !selectedSavedAddressId) {
             try {
-                await saveAddressForUser(user.id, { address1, address2, city, pincode, country }, coords);
+                await saveAddressForUser(user, { address1, address2, city, pincode, country, lat: coords?.lat, lng: coords?.lng });
             } catch (err) {
                 console.warn('Failed to save address', err);
             }
@@ -123,16 +133,6 @@ function CheckoutPage() {
             </div>
         );
     }
-
-    const InputField = ({ label, ...props }) => (
-        <div className="mb-4">
-            <label className="block text-sm font-bold text-slate-700 mb-1.5">{label}</label>
-            <input
-                className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all font-medium text-slate-800"
-                {...props}
-            />
-        </div>
-    );
 
     return (
         <div className="min-h-screen bg-rose-50 py-8 px-4 sm:px-6 lg:px-8">

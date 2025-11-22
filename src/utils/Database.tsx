@@ -57,7 +57,7 @@ export const updatePassword = async (user: UserInterface, newPassword: string) =
     if (!newPassword.trim()) return alert("Enter a new password");
 
     const { error } = await Supabase.auth.updateUser({
-      password: newPassword
+        password: newPassword
     });
 
     if (error) {
@@ -67,9 +67,10 @@ export const updatePassword = async (user: UserInterface, newPassword: string) =
     else {
         console.log("Password updated");
     }
-  };
+};
 
 export const getProductById = async (productId: string) => {
+    // We explicitly join the 'users' table on the foreign key to get the name and role
     const { data, error } = await Supabase
         .from("products")
         .select(`
@@ -82,10 +83,10 @@ export const getProductById = async (productId: string) => {
                 price,
                 stock,
                 seller_id,
-                seller: retailers (
+                seller: users!product_listings_seller_id_fkey (
                     user_id,
                     name,
-                    location
+                    user_role
                 )
             )
         `)
@@ -105,13 +106,17 @@ export const getProductById = async (productId: string) => {
 
     return {
         ...data,
-        listings: data.listings.map((i)=>({...i, productInfo: {name:data.name, image_url:data.image_url, description:data.description}})),
+        // Helper to attach basic product info to listings (useful for cart)
+        listings: data.listings.map((i: any) => ({
+            ...i,
+            productInfo: { name: data.name, image_url: data.image_url, description: data.description }
+        })),
         lowest_price: lowestPrice,
     };
 };
 
 
-    export const getAllProducts = async () => {
+export const getAllProducts = async () => {
     const { data, error } = await Supabase
         .from("products")
         .select(`
@@ -148,8 +153,8 @@ export const getProductById = async (productId: string) => {
 export default Supabase;
 export async function getAllRetailers() {
     const { data, error } = await Supabase
-        .from("sellers")     // <-- replace with correct table name if different
-        .select("seller_id, name, user_role")
+        .from("users")
+        .select("user_id, name, user_role")
         .eq("user_role", "retailer");
 
     if (error) {
@@ -157,5 +162,29 @@ export async function getAllRetailers() {
         return [];
     }
 
-    return data;
+    // Map user_id to seller_id so the frontend keeps working without changes
+    return data.map(user => ({
+        seller_id: user.user_id,
+        name: user.name,
+        user_role: user.user_role
+    }));
+}
+
+export async function getAllWholesalers() {
+    const { data, error } = await Supabase
+        .from("users")
+        .select("user_id, name, user_role")
+        .eq("user_role", "wholesaler");
+
+    if (error) {
+        console.error("Error fetching wholesalers:", error);
+        return [];
+    }
+
+    // Map user_id to seller_id
+    return data.map(user => ({
+        seller_id: user.user_id,
+        name: user.name,
+        user_role: user.user_role
+    }));
 }
