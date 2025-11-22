@@ -2,63 +2,87 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext"
 import { OrderInterface } from "../utils/Interfaces";
 import { getOrders } from "../utils/OrderDB";
+import { Package, Clock, CheckCircle, XCircle, Truck, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export const ProfileOrdersPage = () => {
-    const { user } = useAuth();
-    const [ orders, setOrders ] = useState<OrderInterface[]>([]);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState<OrderInterface[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    const [ loading, setLoading ] = useState(true);
-    
-    useEffect( () => {
-        setLoading(true);
-        if(user) {
-            getOrders(user!)
-            .then(items => 
-            {
-                setOrders(items);
-                setLoading(false);
-            })
-            .catch(()=> {
-                setLoading(false);
-            });
-        }
-    }, [user]);
+  useEffect(() => {
+    setLoading(true);
+    if (user) {
+      getOrders(user)
+        .then(items => { setOrders(items); setLoading(false); })
+        .catch(() => { setLoading(false); });
+    }
+  }, [user]);
 
-    return (
-    <div className="min-h-screen bg-rose-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-3xl shadow-xl shadow-rose-100 overflow-hidden mb-6">
-          <div className="px-8 py-6">
-            <h1 className="text-3xl font-extrabold text-slate-900 mb-4">My Orders</h1>
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+      case 'delivered': return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700"><CheckCircle size={14} /> Delivered</span>;
+      case 'delivering': return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700"><Truck size={14} /> On the way</span>;
+      case 'cancelled': return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700"><XCircle size={14} /> Cancelled</span>;
+      default: return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700"><Clock size={14} /> Pending</span>;
+    }
+  };
 
-            {/* Orders List */}
-            {loading ? (
-                <p className="text-slate-500">Loading your orders.</p>
-            ):
-            (orders.length === 0 ? (
-              <p className="text-slate-500">You have no orders yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {orders.map((order) => (
-                  <div key={order.order_id} className="p-6 bg-slate-100 rounded-2xl shadow-sm hover:shadow-md border border-slate-200 transition-all">
-                    <h3 className="font-bold text-slate-800 mb-2">Order #{order.order_id}</h3>
-                    <ul className="space-y-2">
-                      {order.order_items.map((item) => (
-                        <li key={item.listing_id} className="flex justify-between">
-                          <span className="text-slate-700">{item.name} - {item.quantity} x ${item.price}</span>
-                          <span className={`font-semibold ${item.order_status === 'delivering' ? 'text-green-600' : item.order_status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>
-                            {item.order_status.charAt(0).toUpperCase()+item.order_status.slice(1)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+  return (
+    <div className="space-y-8 animate-fade-in">
+      {/* BACK BUTTON */}
+      <button
+        onClick={() => navigate('/profile')}
+        className="flex items-center gap-2 text-slate-500 hover:text-rose-600 font-bold transition-colors group"
+      >
+        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+        Back to Profile
+      </button>
+
+      <div>
+        <h1 className="text-2xl font-extrabold text-slate-900">Order History</h1>
+        <p className="text-slate-500">Track your past purchases.</p>
       </div>
+
+      {loading ? (
+        <div className="text-center py-10 text-rose-400 font-medium animate-pulse">Loading orders...</div>
+      ) : orders.length === 0 ? (
+        <div className="bg-white p-12 rounded-[2rem] text-center border border-rose-100 shadow-sm">
+          <div className="bg-rose-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Package className="text-rose-500" size={24} />
+          </div>
+          <p className="text-slate-500 text-lg">You haven't ordered anything yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {orders.map((order) => (
+            <div key={order.order_id} className="bg-white rounded-[2rem] shadow-sm border border-rose-100 p-6 hover:shadow-md transition-all">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-50 pb-4 mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">Order #{order.order_id}</h3>
+                  <p className="text-xs text-slate-400 uppercase font-bold tracking-wide">Items: {order.order_items.length}</p>
+                </div>
+                <div className="mt-2 sm:mt-0">
+                  {getStatusBadge(order.order_items[0]?.order_status || 'pending')}
+                </div>
+              </div>
+              <ul className="space-y-3">
+                {order.order_items.map((item) => (
+                  <li key={item.listing_id} className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 font-bold text-xs">{item.quantity}x</div>
+                      <span className="font-medium text-slate-700">{item.name}</span>
+                    </div>
+                    <span className="font-bold text-slate-900">₹{item.price}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

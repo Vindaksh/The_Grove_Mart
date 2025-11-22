@@ -1,12 +1,13 @@
 import React from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
-import { Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Trash2, ArrowRight, ShoppingBag, ArrowLeft } from 'lucide-react';
 
 function CartPage() {
     const { cartItems, totalPrice, removeFromCart, updateQuantity, clearCart } = useCart();
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     const shoppingPath = user?.role === 'retailer' ? '/admin/retailer/wholesale' : '/dashboard';
 
@@ -32,8 +33,18 @@ function CartPage() {
     }
 
     return (
-        <div className="min-h-screen bg-rose-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-rose-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto">
+
+                {/* BACK BUTTON */}
+                <button
+                    onClick={() => navigate(shoppingPath)}
+                    className="flex items-center gap-2 text-slate-500 hover:text-rose-600 font-bold mb-6 transition-colors group"
+                >
+                    <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                    Continue Shopping
+                </button>
+
                 <h1 className="text-3xl font-extrabold text-slate-900 mb-8">Shopping Cart</h1>
 
                 <div className="bg-white rounded-3xl shadow-sm border border-rose-100 overflow-hidden mb-8">

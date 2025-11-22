@@ -2,7 +2,6 @@ import * as React from "react";
 import Slider from "@mui/material/Slider";
 
 export default function PriceSlider({ min, max, value, onChange }) {
-    // Ensure slider always receives numbers
     const safeValue = [
         Number(value[0]) || min,
         Number(value[1]) || max,
@@ -18,20 +17,28 @@ export default function PriceSlider({ min, max, value, onChange }) {
                 valueLabelDisplay="auto"
                 valueLabelFormat={(v) => `₹${v}`}
                 sx={{
-                    color: "#007bff",
+                    color: "#f43f5e",
                     height: 6,
                     "& .MuiSlider-thumb": {
                         height: 18,
                         width: 18,
                         backgroundColor: "#fff",
-                        border: "2px solid #007bff",
+                        border: "2px solid #f43f5e",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    },
+                    "& .MuiSlider-track": {
+                        border: "none",
+                    },
+                    "& .MuiSlider-rail": {
+                        opacity: 0.5,
+                        backgroundColor: "#e2e8f0",
                     },
                 }}
             />
 
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>₹{safeValue[0]}</span>
-                <span>₹{safeValue[1]}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
+                <span className="text-xs font-bold text-slate-500">₹{safeValue[0]}</span>
+                <span className="text-xs font-bold text-slate-500">₹{safeValue[1]}</span>
             </div>
         </div>
     );

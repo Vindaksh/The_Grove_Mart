@@ -1,19 +1,36 @@
 import React, { useContext } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import useAuth from '../context/AuthContext';
-import { User, LogOut, ShoppingCart, Settings, MapPin, ClipboardList } from 'lucide-react';
+import { User, LogOut, ShoppingCart, Settings, MapPin, ClipboardList, ArrowLeft } from 'lucide-react';
 import ProfileAddressesPage from "./ProfileAddresses";
 import ProfileOrdersPage from "./ProfileOrders";
 import ProfileSettingsPage from "./ProfileSettings";
 
 function ProfilePage() {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
   if (loading) return <div className="p-10 text-center">Loading...</div>;
+
+  // Determine correct dashboard path based on role
+  const dashboardPath = user?.role === 'retailer'
+    ? '/admin/retailer'
+    : user?.role === 'wholesaler'
+      ? '/admin/wholesaler'
+      : '/dashboard';
 
   return (
     <div className="min-h-screen bg-rose-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
+
+        {/* BACK TO DASHBOARD BUTTON */}
+        <button
+          onClick={() => navigate(dashboardPath)}
+          className="flex items-center gap-2 text-slate-500 hover:text-rose-600 font-bold mb-6 transition-colors group"
+        >
+          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Dashboard
+        </button>
 
         {/* Profile Header Card */}
         <div className="bg-white rounded-3xl shadow-xl shadow-rose-100 overflow-hidden mb-6">
@@ -58,7 +75,7 @@ const ActionGrid = () => {
     <>
       {/* Actions Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          
+
         {/* Your Cart Button */}
         <button
           onClick={() => navigate('/cart')}
@@ -128,10 +145,9 @@ const ActionGrid = () => {
             <p className="text-sm text-slate-500">Log out of your account</p>
           </div>
         </button>
-        
+
       </div>
     </>
-
   );
 }
 

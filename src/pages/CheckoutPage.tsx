@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
-//import './Checkout.css';
 import {
     createOrder,
     completePayment
 } from "../utils/OrderDB";
-import Supabase, { getUserDetails } from "../utils/Database";
 import { useAuth } from '../context/AuthContext';
 import { getSavedAddresses, saveAddressForUser } from "../utils/AdressDB";
 import { getLatLongFromAddress } from "../utils/Geo";
-import { MapPin, CreditCard, Truck, CheckCircle, AlertCircle } from 'lucide-react';
+import { MapPin, CreditCard, Truck, AlertCircle, ArrowLeft } from 'lucide-react';
 import { updateOrderLatLng } from '../utils/AdressDB';
 import { AddressInterface } from '../utils/Interfaces';
 
@@ -115,8 +113,6 @@ function CheckoutPage() {
             console.warn("No coordinates found, skipping lat/lng update");
         }
 
-
-        // navigate to success
         await refreshCart(user);
         navigate("/order-success", { state: { orderId: order.order_id } });
         setLoading(false);
@@ -147,8 +143,18 @@ function CheckoutPage() {
     );
 
     return (
-        <div className="min-h-screen bg-rose-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-rose-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
+
+                {/* BACK BUTTON */}
+                <button
+                    onClick={() => navigate('/cart')}
+                    className="flex items-center gap-2 text-slate-500 hover:text-rose-600 font-bold mb-6 transition-colors group"
+                >
+                    <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                    Back to Cart
+                </button>
+
                 <h1 className="text-3xl font-extrabold text-slate-900 mb-8">Secure Checkout</h1>
 
                 <div className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">

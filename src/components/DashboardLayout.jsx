@@ -1,44 +1,50 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Package, ShoppingBag, TrendingUp, LayoutDashboard, ArrowLeft } from 'lucide-react';
+import { Package, ShoppingBag, TrendingUp, LayoutDashboard, HelpCircle } from 'lucide-react';
 
 function DashboardLayout() {
     const { user } = useAuth();
     const role = user?.role;
 
-    // Reusable Sidebar Link Component
-    // Added 'end' prop to fix the highlighting issue
     const SidebarLink = ({ to, icon: Icon, label, end = false }) => (
         <NavLink
             to={to}
             end={end}
             className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-colors mb-2
+                `flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 group
                 ${isActive
-                    ? 'bg-rose-100 text-rose-600 shadow-sm' // Active: Rose theme
-                    : 'text-slate-500 hover:bg-rose-50 hover:text-rose-500' // Inactive: Slate to Rose hover
+                    ? 'bg-rose-50 text-rose-600 shadow-sm border border-rose-100'
+                    : 'text-slate-500 hover:bg-white hover:text-rose-500 hover:shadow-sm hover:border-slate-100 border border-transparent'
                 }`
             }
         >
-            <Icon size={20} />
-            {label}
+            {({ isActive }) => (
+                <>
+                    <Icon
+                        size={20}
+                        className={isActive ? "text-rose-600" : "text-slate-400 group-hover:text-rose-500"}
+                    />
+                    {label}
+                </>
+            )}
         </NavLink>
     );
 
     return (
-        <div className="min-h-screen bg-rose-50 flex pt-20">
+        <div className="min-h-screen bg-rose-50 flex flex-col md:flex-row pt-20">
 
             {/* Sidebar */}
-            <aside className="w-72 bg-white border-r border-rose-100 fixed h-full hidden md:block overflow-y-auto pb-20">
-                <div className="p-6">
-                    <h3 className="text-xs font-extrabold text-rose-400 uppercase tracking-wider mb-6 px-2">
+            <aside className="w-full md:w-72 bg-white/50 backdrop-blur-xl border-r border-rose-100 md:h-[calc(100vh-80px)] sticky top-20 hidden md:flex flex-col justify-between px-6 pb-6 pt-0 overflow-y-auto custom-scrollbar">
+
+                {/* Top Section: Navigation */}
+                <div>
+                    <h3 className="text-xs font-extrabold text-rose-400 uppercase tracking-wider mb-4 px-2 mt-4">
                         {role} Menu
                     </h3>
-                    <nav>
+                    <nav className="space-y-1">
                         {role === 'retailer' && (
                             <>
-                                {/* Added 'end' to the dashboard link so it un-highlights when you leave it */}
                                 <SidebarLink to="" icon={LayoutDashboard} label="Overview" end />
                                 <SidebarLink to="wholesale" icon={TrendingUp} label="Wholesale Market" />
                                 <SidebarLink to="inventory" icon={Package} label="My Inventory" />
@@ -56,17 +62,27 @@ function DashboardLayout() {
                     </nav>
                 </div>
 
-                {/* Decorative element at bottom of sidebar */}
-                <div className="absolute bottom-0 left-0 w-full p-6">
-                    <div className="bg-rose-50 rounded-2xl p-4 border border-rose-100">
-                        <p className="text-xs font-bold text-rose-400 mb-1">Need Help?</p>
-                        <p className="text-xs text-slate-500">Contact support anytime.</p>
+                {/* Bottom Section: Support Card */}
+                <div className="mt-6">
+                    <div className="bg-gradient-to-br from-rose-100 to-white p-5 rounded-[2rem] border border-rose-100 shadow-sm">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-white rounded-full shadow-sm text-rose-500">
+                                <HelpCircle size={18} />
+                            </div>
+                            <p className="text-sm font-bold text-slate-800">Need Help?</p>
+                        </div>
+                        <p className="text-xs text-slate-500 leading-relaxed mb-3">
+                            Contact our support team for assistance with orders or inventory.
+                        </p>
+                        <button className="w-full py-2 bg-white text-rose-600 text-xs font-bold rounded-xl border border-rose-100 hover:bg-rose-50 transition-colors">
+                            Contact Support
+                        </button>
                     </div>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 md:ml-72 p-6 sm:p-8 lg:p-10">
+            {/* Main Content Area */}
+            <main className="flex-1 p-6 sm:p-8 lg:p-10 overflow-x-hidden">
                 <div className="max-w-6xl mx-auto animate-fade-in">
                     <Outlet />
                 </div>

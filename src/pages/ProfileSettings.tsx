@@ -1,76 +1,112 @@
 import { useState } from "react";
 import { updateName as updateNameDB, updatePassword as updatePasswordDB } from "../utils/Database";
 import { useAuth } from "../context/AuthContext";
+import { User, Lock, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export const ProfileSettingsPage = () => {
-    const { user, reload } = useAuth();
+  const { user, reload } = useAuth();
+  const navigate = useNavigate();
 
-    const [newName, setNewName] = useState("");
-    const [currentPassword, setCurrentPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
+  const [newName, setNewName] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
-    const updateName = async () => {
-        await updateNameDB(user!, newName);
-        await reload();
-        setNewName("");
-    }
+  const updateName = async () => {
+    await updateNameDB(user!, newName);
+    await reload();
+    setNewName("");
+  }
 
-    const updatePassword = async () => {
-        await updatePasswordDB(user!, newPassword);
-        setCurrentPassword("");
-        setNewPassword("");
-    }
+  const updatePassword = async () => {
+    await updatePasswordDB(user!, newPassword);
+    setCurrentPassword("");
+    setNewPassword("");
+  }
 
-    return (
-    <div className="min-h-screen bg-rose-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-3xl shadow-xl shadow-rose-100 overflow-hidden mb-6">
-          <div className="px-8 py-6">
-            <h2 className="text-3xl font-extrabold text-slate-900 mb-6">Edit Profile</h2>
+  return (
+    <div className="space-y-8 animate-fade-in">
+      {/* BACK BUTTON */}
+      <button
+        onClick={() => navigate('/profile')}
+        className="flex items-center gap-2 text-slate-500 hover:text-rose-600 font-bold transition-colors group"
+      >
+        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+        Back to Profile
+      </button>
 
-            {/* --- NAME UPDATE --- */}
-            <div className="p-6 bg-slate-100 rounded-2xl shadow-sm hover:shadow-md border border-slate-200 transition-all mb-6">
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">Update Name</h3>
-              <input
-                type="text"
-                placeholder="Enter new name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full p-3 mb-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-              />
-              <button
-                onClick={updateName}
-                className="w-full p-3 bg-rose-500 text-white rounded-xl font-semibold hover:bg-rose-600 transition-all"
-              >
-                Save Name
-              </button>
-            </div>
+      <div>
+        <h2 className="text-2xl font-extrabold text-slate-900">Account Settings</h2>
+        <p className="text-slate-500">Update your personal information.</p>
+      </div>
 
-            {/* --- PASSWORD UPDATE --- */}
-            <div className="p-6 bg-slate-100 rounded-2xl shadow-sm hover:shadow-md border border-slate-200 transition-all">
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">Change Password</h3>
-              <input
-                type="password"
-                placeholder="Current Password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full p-3 mb-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-              />
-              <input
-                type="password"
-                placeholder="New Password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full p-3 mb-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-              />
-              <button
-                onClick={updatePassword}
-                className="w-full p-3 bg-rose-500 text-white rounded-xl font-semibold hover:bg-rose-600 transition-all"
-              >
-                Change Password
-              </button>
-            </div>
+      {/* --- NAME UPDATE --- */}
+      <div className="bg-white rounded-[2rem] shadow-sm border border-rose-100 p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-rose-50 rounded-xl text-rose-500">
+            <User size={20} />
           </div>
+          <h3 className="text-lg font-bold text-slate-800">Public Profile</h3>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Display Name</label>
+            <input
+              type="text"
+              placeholder={user?.name || "Enter your name"}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full p-4 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all font-medium"
+            />
+          </div>
+          <button
+            onClick={updateName}
+            disabled={!newName}
+            className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            Save Name
+          </button>
+        </div>
+      </div>
+
+      {/* --- PASSWORD UPDATE --- */}
+      <div className="bg-white rounded-[2rem] shadow-sm border border-rose-100 p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-rose-50 rounded-xl text-rose-500">
+            <Lock size={20} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800">Security</h3>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Current Password</label>
+            <input
+              type="password"
+              placeholder="Enter current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full p-4 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all font-medium"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">New Password</label>
+            <input
+              type="password"
+              placeholder="Enter new password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full p-4 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all font-medium"
+            />
+          </div>
+
+          <button
+            onClick={updatePassword}
+            className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-rose-600 transition-all"
+          >
+            Change Password
+          </button>
         </div>
       </div>
     </div>
