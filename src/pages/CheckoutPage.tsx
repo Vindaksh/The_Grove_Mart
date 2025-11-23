@@ -7,6 +7,8 @@ import { getSavedAddresses, saveAddressForUser } from "../utils/AdressDB";
 import { MapPin, CreditCard, Truck, ArrowLeft, Plus, X, ExternalLink } from 'lucide-react';
 import { SavedAddressInterface } from '../utils/Interfaces';
 import { GeoPickerMap, LocationInterface, StaticLocationMap } from '../components/GeoPickerMap';
+import  Supabase  from "../utils/Database";
+import { createListingForExisting } from '../utils/InventoryDB';
 
 interface SelectedAddress extends LocationInterface {
     address_id?: string | null;
@@ -107,6 +109,57 @@ function CheckoutPage() {
             setLoading(false);
             return;
         }
+        for (const item of cartItems) {
+            const listing = item.listing;
+            const wholesalerRole = listing.seller.user_role;  // already available
+            const buyerRole = user.role;                 // from auth/users join
+
+            // Only run auto-restock if:
+            // buyer = retailer AND seller = wholesaler
+            if (buyerRole !== "retailer" || wholesalerRole !== "wholesaler") {
+                continue;
+            }
+
+            const productId = listing.productInfo.product_id
+
+            const wholesalerListingId = listing.product_listings_id;
+            const retailerId = user.id;
+            const quantity = item.quantity;
+
+            // --- A) Deduct stock from wholesaler listing ---
+            await Supabase
+                .from("product_listings")
+                .update({ stock: listing.stock - quantity })
+                .eq("product_listings_id", wholesalerListingId);
+
+            // --- B) Check if retailer already has a listing for this product ---
+            const { data: existingRetailerListing } = await Supabase
+                .from("product_listings")
+                .select("*")
+                .eq("product_id", productId)
+                .eq("seller_id", retailerId)
+                .maybeSingle();
+
+            if (existingRetailerListing) {
+                // Retailer already has listing → increase stock
+                await Supabase
+                    .from("product_listings")
+                    .update({
+                        stock: existingRetailerListing.stock + quantity
+                    })
+                    .eq("product_listings_id", existingRetailerListing.product_listings_id);
+
+            } else {
+                // Retailer doesn't sell this product → create new listing
+                await createListingForExisting(
+                    retailerId,
+                    productId,
+                    listing.price,   // use wholesaler's price by default
+                    quantity
+                );
+            }
+        }
+
 
         setLoading(false);
         refreshCart();
