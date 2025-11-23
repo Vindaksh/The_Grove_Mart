@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllProducts, getAllRetailers, getAllWholesalers } from '../utils/Database';
+import { getAllProducts, getAllRetailers, getAllWholesalers,getAllCategories } from '../utils/Database';
 import ProductCard from '../components/ProductCard';
 import { Search, Filter, ChevronDown } from 'lucide-react';
 import { FilteredProductInterface } from "../utils/Interfaces";
@@ -35,6 +35,8 @@ function WholesaleMarket() {
     const [maxDistance, setMaxDistance] = useState("");
     const [sortType, setSortType] = useState("");
     const [priceBounds, setPriceBounds] = useState({ min: 0, max: 5000 });
+    const [categories, setCategories] = useState<{ category_id: string, category_name: string }[]>([]);
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
     // NEW STATE FOR PRICE DEBOUNCE
     const [debouncedPriceRange, setDebouncedPriceRange] = useState([0, 0]);
@@ -43,6 +45,7 @@ function WholesaleMarket() {
     // NEW STATES FOR DROPDOWN VISIBILITY
     const [isPriceFilterOpen, setIsPriceFilterOpen] = useState(false);
     const [isSellersFilterOpen, setIsSellersFilterOpen] = useState(false);
+    const [isCategoriesFilterOpen, setIsCategoriesFilterOpen] = useState(false);
     // ---------------------------------
 
     const [coord, setCoord] = useState<{ lat: number, lng: number } | null>(null);
@@ -66,6 +69,11 @@ function WholesaleMarket() {
             }
         });
     };
+    const toggleCategory = (id: string) => {
+        setSelectedCategories(prev =>
+            prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+        );
+    };
 
     const loadData = async (filter: FilterInterface) => {
         const allowedRole = user ? (user.role === "retailer" ? "wholesaler" : "retailer") : "retailer";
@@ -79,6 +87,8 @@ function WholesaleMarket() {
         if (!filter.sellerIds || filter.sellerIds.length === 0) {
             filter.sellerIds = sellerData.map(i => i.seller_id);
         }
+        const rawCategories = await getAllCategories();
+            setCategories(rawCategories);
 
         const listings = await getFilteredListings(filter);
 
@@ -156,7 +166,8 @@ function WholesaleMarket() {
             baseFilter.sellerIds = (selectedRetailers.length > 0) ? selectedRetailers : undefined;
             if (searchTerm !== "") baseFilter.searchTerm = searchTerm;
             if (maxDistance) baseFilter.maxDist = Number(maxDistance);
-
+            if (selectedCategories.length > 0)
+                baseFilter.categoryIds = selectedCategories;
             if (sortType === 'price_asc') {
                 baseFilter.orderBy = 'price';
                 baseFilter.priceAsc = true;
@@ -245,11 +256,13 @@ function WholesaleMarket() {
                 : retailers.map(i => i.seller_id);
 
         setLoadingProducts(true);
+        const categoryIds = reset? categories.map(c => c.category_id) : (selectedCategories.length > 0)? selectedCategories : categories.map(c => c.category_id);
 
         let filter: FilterInterface = {
             minPrice: minP,
             maxPrice: maxP,
-            sellerIds: sellerIds
+            sellerIds: sellerIds,
+            categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
         };
 
         if (searchTerm !== "") {
@@ -288,6 +301,7 @@ function WholesaleMarket() {
         setSelectedRetailers([]);
         setMaxDistance("");
         setSortType("");
+        setSelectedCategories([]);
 
         applyFilters(true);
     };
@@ -316,11 +330,11 @@ function WholesaleMarket() {
 
                 {/* ───────────────── STICKY HORIZONTAL FILTER BAR ───────────────── */}
                 {/* FIX: Change top-[80px] to top-2 or top-0 */}
-                <div className="sticky top-2 bg-white p-4 rounded-2xl shadow-md flex flex-wrap gap-4 items-center border border-rose-100 mb-8 z-30">
+                <div className="sticky top-2 bg-white p-4 rounded-2xl shadow-md flex flex-nowrap overflow-x-auto no-scrollbar gap-4 items-center border border-rose-100 mb-8 z-30">
                     
                     {/* Search Bar */}
                     <div className="relative w-full md:w-64">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <div className="absolute inset-y-0 left-0 pl-4  items-center pointer-events-none">
                             <Search className="h-5 w-5 text-rose-400" />
                         </div>
                         <input
@@ -442,6 +456,61 @@ function WholesaleMarket() {
                             </div>
                         )}
                     </div>
+                    {/* Categories Dropdown */}
+                    <div className="relative">
+                        <button 
+                            onClick={() => {
+                                setIsCategoriesFilterOpen(prev => !prev);
+                                if (!isCategoriesFilterOpen) {
+                                    setIsPriceFilterOpen(false);
+                                    setIsSellersFilterOpen(false);
+                                }
+                            }}
+                            className={`p-2.5 font-bold rounded-xl flex items-center gap-1 transition-colors text-sm whitespace-nowrap ${
+                                isCategoriesFilterOpen ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                        >
+                            <Filter size={16} /> 
+                            Categories 
+                            <span className="font-normal text-xs">
+                                {selectedCategories.length === 0 ? "(All)" : `(${selectedCategories.length} selected)`}
+                            </span>
+                            <ChevronDown size={16} className={isCategoriesFilterOpen ? 'rotate-180' : ''} />
+                        </button>
+
+                        {isCategoriesFilterOpen && (
+                            <div className="absolute top-full mt-2 w-64 p-4 bg-white rounded-xl shadow-xl border border-rose-100 z-40">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                                    Categories ({categories.length})
+                                </h3>
+
+                                <div className="space-y-1 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                    {categories.map(c => (
+                                        <label key={c.category_id} className="flex items-center space-x-3 p-1 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors group">
+                                            <div className="relative flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-slate-200 checked:border-rose-500 checked:bg-rose-500 transition-all"
+                                                    checked={selectedCategories.includes(c.category_id)}
+                                                    onChange={() => toggleCategory(c.category_id)} 
+                                                />
+                                                <svg className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                                </svg>
+                                            </div>
+                                            <span className="text-sm font-medium text-slate-600 group-hover:text-rose-600 transition-colors">
+                                                {c.category_name}
+                                            </span>
+                                        </label>
+                                    ))}
+                                    {categories.length === 0 && (
+                                        <p className="text-sm text-slate-400 italic">No categories found.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     
                     {/* Reset Button */}
                     <button

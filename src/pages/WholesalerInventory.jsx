@@ -7,7 +7,10 @@ import {
     createListingForExisting,
     createNewProductAndListing,
     deleteListing,
-    updateListing
+    updateListing,
+    searchCategories,
+    createCategory,
+    addCategoryToProduct,
 } from '../utils/InventoryDB';
 
 function WholesalerInventory() {
@@ -19,9 +22,15 @@ function WholesalerInventory() {
     const [activeTab, setActiveTab] = useState('search');
     const [editingId, setEditingId] = useState(null);
 
+
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    // Categories (for create-new workflow)
+    const [categorySearch, setCategorySearch] = useState("");
+    const [categoryResults, setCategoryResults] = useState([]);
+    const [selectedCategories, setSelectedCategories] = useState([]);
+
 
     const [formData, setFormData] = useState({
         price: '',
@@ -91,7 +100,7 @@ function WholesalerInventory() {
         }
         else {
             const res = await createNewProductAndListing(user.id,
-                { name: formData.name, description: formData.description, image_url: formData.image_url },
+                { name: formData.name, description: formData.description, image_url: formData.image_url, categories: selectedCategories },
                 formData.price, formData.stock
             );
             error = res.error;
@@ -240,12 +249,106 @@ function WholesalerInventory() {
                             )}
 
                             {!editingId && activeTab === 'create' && (
-                                <div className="space-y-4">
-                                    <input required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Product Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                                    <textarea className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Description" rows="2" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
-                                    <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Image URL" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} />
+                            <div className="space-y-4">
+                                <input required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none"
+                                    placeholder="Product Name"
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                />
+
+                                <textarea className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none"
+                                    placeholder="Description"
+                                    rows="2"
+                                    value={formData.description}
+                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                />
+
+                                <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none"
+                                    placeholder="Image URL"
+                                    value={formData.image_url}
+                                    onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+                                />
+
+                                {/* CATEGORY SELECTOR */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                                        Categories
+                                    </label>
+
+                                    {/* Category Search Input */}
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none"
+                                        placeholder="Search or create (e.g. Snacks)..."
+                                        value={categorySearch}
+                                        onChange={async (e) => {
+                                            const value = e.target.value;
+                                            setCategorySearch(value);
+
+                                            if (value.length >= 1) {
+                                                const results = await searchCategories(value); // PREFIX SEARCH
+                                                setCategoryResults(results);
+                                            } else {
+                                                setCategoryResults([]);
+                                            }
+                                        }}
+                                    />
+
+                                    {/* Autocomplete Dropdown */}
+                                    {categorySearch.length >= 1 && (
+                                        <div className="bg-white border rounded-xl shadow-lg mt-2 max-h-40 overflow-y-auto">
+                                            
+                                            {/* Existing categories */}
+                                            {categoryResults.map(cat => (
+                                                <div
+                                                    key={cat.category_id}
+                                                    className="p-3 hover:bg-rose-50 cursor-pointer"
+                                                    onClick={() => {
+                                                        setSelectedCategories([...selectedCategories, cat]);
+                                                        setCategorySearch("");
+                                                        setCategoryResults([]);
+                                                    }}
+                                                >
+                                                    {cat.category_name}
+                                                </div>
+                                            ))}
+
+                                            {/* Create new category IF none match */}
+                                            {categoryResults.length === 0 && (
+                                                <div
+                                                    className="p-3 bg-rose-50 text-rose-600 font-bold cursor-pointer"
+                                                    onClick={async () => {
+                                                        const { data: newCat } = await createCategory(categorySearch);
+                                                        setSelectedCategories([...selectedCategories, newCat]);
+                                                        setCategorySearch("");
+                                                        setCategoryResults([]);
+                                                    }}
+                                                >
+                                                    + Create "{categorySearch}"
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Selected Categories */}
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                        {selectedCategories.map(cat => (
+                                            <div key={cat.category_id} className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-bold flex items-center gap-2">
+                                                {cat.category_name}
+                                                <X
+                                                    size={14}
+                                                    className="cursor-pointer"
+                                                    onClick={() => {
+                                                        setSelectedCategories(selectedCategories.filter(c => c.category_id !== cat.category_id));
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
+
 
                             {(selectedProduct || activeTab === 'create') && (
                                 <div className={`grid grid-cols-2 gap-4 ${!editingId ? "mt-6 pt-6 border-t border-slate-100" : ""}`}>

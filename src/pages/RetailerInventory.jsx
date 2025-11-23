@@ -7,7 +7,10 @@ import {
     createListingForExisting,
     createNewProductAndListing,
     deleteListing,
-    updateListing
+    updateListing,
+    searchCategories,
+    createCategory,
+    addCategoryToProduct,
 } from '../utils/InventoryDB';
 
 function RetailerInventory() {
@@ -19,6 +22,9 @@ function RetailerInventory() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('search'); // 'search' | 'create'
     const [editingId, setEditingId] = useState(null); // ID of listing being edited
+    const [categorySearch, setCategorySearch] = useState("");
+    const [categoryResults, setCategoryResults] = useState([]);
+    const [selectedCategories, setSelectedCategories] = useState([]); // array of {id, name}
 
     // Form Data
     const [searchQuery, setSearchQuery] = useState('');
@@ -106,7 +112,7 @@ function RetailerInventory() {
         else {
             // SCENARIO 2: CREATE NEW
             const res = await createNewProductAndListing(user.id,
-                { name: formData.name, description: formData.description, image_url: formData.image_url },
+                { name: formData.name, description: formData.description, image_url: formData.image_url,categories: selectedCategories },
                 formData.price,
                 formData.stock
             );
@@ -334,8 +340,88 @@ function RetailerInventory() {
                                                 value={formData.image_url}
                                                 onChange={e => setFormData({ ...formData, image_url: e.target.value })}
                                             />
+                                    
                                         </div>
                                     </div>
+                                    {/* CATEGORY SELECTOR */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                                            Categories
+                                        </label>
+
+                                        {/* Search box */}
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none"
+                                            placeholder="Search or create (e.g. Snacks)..."
+                                            value={categorySearch}
+                                            onChange={async e => {
+                                                const value = e.target.value;
+                                                setCategorySearch(value);
+                                                
+                                                if (value.length >= 1) {
+                                                    const results = await searchCategories(value);
+                                                    setCategoryResults(results);
+                                                    console.log(results);
+                                                } else {
+                                                    setCategoryResults([]);
+                                                }
+                                            }}
+                                        />
+
+                                        {/* Autocomplete dropdown */}
+                                        {categorySearch.length >= 1 && (
+                                            <div className="bg-white border rounded-xl shadow-lg mt-2 max-h-40 overflow-y-auto">
+
+                                                {/* Existing categories */}
+                                                {categoryResults.map(cat => (
+                                                    <div
+                                                        key={cat.category_id}
+                                                        className="p-3 hover:bg-rose-50 cursor-pointer"
+                                                        onClick={() => {
+                                                            setSelectedCategories([...selectedCategories, cat]);
+                                                            setCategorySearch("");       // autocomplete fill
+                                                            setCategoryResults([]);
+                                                        }}
+                                                    >
+                                                        {cat.category_name}
+                                                    </div>
+                                                ))}
+
+                                                {/* Create new only if no matches */}
+                                                {categoryResults.length === 0 && (
+                                                    <div
+                                                        className="p-3 bg-rose-50 text-rose-600 font-bold cursor-pointer"
+                                                        onClick={async () => {
+                                                            const { data: newCat } = await createCategory(categorySearch);
+                                                            setSelectedCategories([...selectedCategories, newCat]);
+                                                            setCategorySearch("");
+                                                            setCategoryResults([]);
+                                                        }}
+                                                    >
+                                                        + Create "{categorySearch}"
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Selected category chips */}
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {selectedCategories.map(cat => (
+                                                <div key={cat.category_id} className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-bold flex items-center gap-2">
+                                                    {cat.category_name}
+                                                    <X
+                                                        size={14}
+                                                        className="cursor-pointer"
+                                                        onClick={() =>
+                                                            setSelectedCategories(selectedCategories.filter(c => c.category_id !== cat.category_id))
+                                                        }
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                 </div>
                             )}
 

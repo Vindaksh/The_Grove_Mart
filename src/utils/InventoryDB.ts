@@ -68,6 +68,16 @@ export async function createNewProductAndListing(userId: string, productData: an
         .single();
 
     if (prodError) return { error: prodError };
+        if (productData.categories && productData.categories.length > 0) {
+        for (const cat of productData.categories) {
+            await Supabase
+                .from("category_products")
+                .insert([{
+                    category_id: cat.category_id,
+                    product_id: product.product_id
+                }]);
+        }
+    }   
 
     // B. Insert Listing linked to that new Product
     const { data: listing, error: listError } = await Supabase
@@ -82,6 +92,8 @@ export async function createNewProductAndListing(userId: string, productData: an
         .single();
 
     return { data: listing, error: listError };
+
+    
 }
 
 // 5. Update an existing listing
@@ -140,4 +152,55 @@ export async function checkStockAvailability(listingId: string, requiredQty: num
     }
 
     return data.stock >= requiredQty;
+}
+
+// 9. Search categories (autocomplete)
+export async function searchCategories(query: string) {
+    if (!query || query.length < 1) return [];
+    const { data, error } = await Supabase
+        .from("categories")
+        .select("*")
+        .ilike("category_name", `${query}%`)
+        .order("category_name");
+        
+    if (error) {
+        console.error("Category search error:", error);
+        return [];
+    }
+    console.log("Search results:",data);
+    return data;
+}
+
+// 10. Create a new category
+export async function createCategory(name: string) {
+    const { data, error } = await Supabase
+        .from("categories")
+        .insert([{ category_name: name }])
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Create category error:", error);
+        return { data: null, error };
+    }
+
+    return { data, error: null };
+}
+
+// 11. Link category → product
+export async function addCategoryToProduct(categoryId: string, productId: string) {
+    const { data, error } = await Supabase
+        .from("category_products")
+        .insert([{
+            category_id: categoryId,
+            product_id: productId
+        }])
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error linking category to product:", error);
+    }
+
+    return { data, error };
 }
