@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getAllProducts, getAllRetailers, getAllWholesalers, getAllCategories } from '../utils/Database';
+import { getAllRetailers, getAllWholesalers, getAllCategories } from '../utils/Database';
 import ProductCard from '../components/ProductCard';
-import { Search, Filter, ChevronDown } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, Check } from 'lucide-react'; // <--- Added 'Check' here
 import { FilteredProductInterface } from "../utils/Interfaces";
 import PriceSlider from '../components/priceslider';
 import useAuth from '../context/AuthContext';
 import { FilterInterface, getFilteredListings, groupListingsByProduct } from '../utils/productsDB';
-
-// NOTE: This page currently relies on local filtering/sorting after fetching ALL products.
-// For correct functionality, we should either re-architect this to use `getFilteredListings` RPC,
-// or apply local sorting/filtering accurately. Since the page fetches *all* products and then filters 
-// for wholesaler listings, we will add the sorting logic locally to the filtered products array.
 
 interface Seller {
     seller_id: string;
@@ -21,11 +16,13 @@ interface Seller {
 function WholesaleMarket() {
     const { user, loading: userLoading } = useAuth();
 
-    const [products, setProducts] = useState<FilteredProductInterface[]>([]);
     const [filtered, setFiltered] = useState<FilteredProductInterface[]>([]);
     const [retailers, setRetailers] = useState<Seller[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingProducts, setLoadingProducts] = useState(true);
+
+    // Toggle for the filter panel
+    const [showFilters, setShowFilters] = useState(false);
 
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
@@ -38,18 +35,12 @@ function WholesaleMarket() {
     const [categories, setCategories] = useState<{ category_id: string, category_name: string }[]>([]);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
-    // NEW STATE FOR PRICE DEBOUNCE
+    // Debounced Price
     const [debouncedPriceRange, setDebouncedPriceRange] = useState([0, 0]);
-    // ---------------------------------
-
-    // NEW STATES FOR DROPDOWN VISIBILITY
-    const [isPriceFilterOpen, setIsPriceFilterOpen] = useState(false);
-    const [isSellersFilterOpen, setIsSellersFilterOpen] = useState(false);
-    const [isCategoriesFilterOpen, setIsCategoriesFilterOpen] = useState(false);
-    // ---------------------------------
 
     const [coord, setCoord] = useState<{ lat: number, lng: number } | null>(null);
 
+    // --- Location & Initial Load Logic ---
     const getCurrentLocation = async (): Promise<{ lat: number, lng: number } | null> => {
         return new Promise((resolve) => {
             if (navigator.geolocation) {
@@ -64,14 +55,20 @@ function WholesaleMarket() {
                     }
                 );
             } else {
-                console.error("Geolocation not supported");
                 resolve(null);
             }
         });
     };
+
     const toggleCategory = (id: string) => {
         setSelectedCategories(prev =>
             prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+        );
+    };
+
+    const toggleRetailer = (id: string) => {
+        setSelectedRetailers(prev =>
+            prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
         );
     };
 
@@ -80,9 +77,7 @@ function WholesaleMarket() {
 
         const rawSellers = (allowedRole === "retailer") ? await getAllRetailers() : await getAllWholesalers();
         const sellerData = rawSellers as Seller[];
-        setRetailers(
-            sellerData.filter(s => s.user_role === allowedRole)
-        );
+        setRetailers(sellerData.filter(s => s.user_role === allowedRole));
 
         if (!filter.sellerIds || filter.sellerIds.length === 0) {
             filter.sellerIds = sellerData.map(i => i.seller_id);
@@ -101,47 +96,36 @@ function WholesaleMarket() {
         const productData = groupListingsByProduct(listings);
         let cleaned = productData;
 
-        // --- FINAL FRONT-END SORTING FIX ---
+        // Front-end Sort
         if (filter.orderBy === 'price') {
             const isAsc = filter.priceAsc ?? true;
-
             cleaned.sort((a, b) => {
                 const priceA = a.lowest_price ?? Infinity;
                 const priceB = b.lowest_price ?? Infinity;
-
-                if (isAsc) {
-                    return priceA - priceB;
-                } else {
-                    return priceB - priceA;
-                }
+                return isAsc ? priceA - priceB : priceB - priceA;
             });
         }
-        // -----------------------------------
 
+        // Set Price Bounds dynamically based on data
         const allPrices = cleaned.flatMap(p => p.listings.map(l => l.price));
-
         if (allPrices.length > 0) {
             const minP = Math.min(...allPrices);
             const maxP = Math.max(...allPrices);
-
             if (priceBounds.max === 5000 && priceBounds.min === 0) {
                 setPriceBounds({ min: minP, max: maxP });
                 setMinPrice(minP);
                 setMaxPrice(maxP);
-                setDebouncedPriceRange([minP, maxP]); // Initialize debounced state
+                setDebouncedPriceRange([minP, maxP]);
             }
         }
 
-        setProducts(cleaned);
         setFiltered(cleaned);
-
         setLoading(false);
         setLoadingProducts(false);
     };
 
     const loadMarketplace = async (initialLoad: boolean = false) => {
         setLoadingProducts(true);
-
         let currentCoord = null;
         const newCoord = await getCurrentLocation();
         if (newCoord) {
@@ -153,21 +137,16 @@ function WholesaleMarket() {
         }
 
         let baseFilter: FilterInterface = {};
-        if (currentCoord) {
-            baseFilter.distFrom = currentCoord;
-        }
+        if (currentCoord) baseFilter.distFrom = currentCoord;
 
         if (!initialLoad) {
-            // !!! USE DEBOUNCED VALUES FOR API CALL !!!
             baseFilter.minPrice = debouncedPriceRange[0];
             baseFilter.maxPrice = debouncedPriceRange[1];
-            // !!! --------------------------------- !!!
-
             baseFilter.sellerIds = (selectedRetailers.length > 0) ? selectedRetailers : undefined;
             if (searchTerm !== "") baseFilter.searchTerm = searchTerm;
             if (maxDistance) baseFilter.maxDist = Number(maxDistance);
-            if (selectedCategories.length > 0)
-                baseFilter.categoryIds = selectedCategories;
+            if (selectedCategories.length > 0) baseFilter.categoryIds = selectedCategories;
+
             if (sortType === 'price_asc') {
                 baseFilter.orderBy = 'price';
                 baseFilter.priceAsc = true;
@@ -180,101 +159,51 @@ function WholesaleMarket() {
                 baseFilter.orderBy = 'relevance';
             }
         }
-
         await loadData(baseFilter);
     };
 
     useEffect(() => {
-        if (!userLoading) {
-            loadMarketplace(true);
-        }
+        if (!userLoading) loadMarketplace(true);
     }, [user, userLoading]);
 
-    // --- LIVE SEARCH EFFECT (Debounced) ---
-    useEffect(() => {
-        const delayDebounceFn = setTimeout(() => {
-            if (!loading) applyFilters(false);
-        }, 500);
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchTerm]);
-
-
-    // ───────────────── NEW DEBOUNCE EFFECT FOR PRICE SLIDER ─────────────────
+    // Debounce Price
     useEffect(() => {
         if (loading) return;
-
-        const delayDebounceFn = setTimeout(() => {
-            // Update the debounced state, which triggers the API call in the next useEffect
-            setDebouncedPriceRange([minPrice, maxPrice]);
-        }, 500); // 500ms debounce delay
-
-        // Cleanup function to clear the timeout if minPrice/maxPrice change again
-        return () => clearTimeout(delayDebounceFn);
+        const delay = setTimeout(() => setDebouncedPriceRange([minPrice, maxPrice]), 500);
+        return () => clearTimeout(delay);
     }, [minPrice, maxPrice]);
 
-
-    // --- LIVE FILTER EFFECTS (Triggers on state change) ---
-
-    // Effect 1: Triggers when the debounced price range or selected sellers change
+    // Trigger Search
     useEffect(() => {
-        if (!loading) {
-            // debouncedPriceRange updates only after the user stops sliding.
-            applyFilters(false);
-        }
-    }, [debouncedPriceRange, selectedRetailers]);
+        const delay = setTimeout(() => { if (!loading) applyFilters(false); }, 500);
+        return () => clearTimeout(delay);
+    }, [searchTerm]);
 
-
-    // Effect 2: Trigger filter update when sort type or max distance changes
+    // Trigger Filters
     useEffect(() => {
-        if (!loading) {
-            applyFilters(false);
-        }
-    }, [sortType, maxDistance]);
-    // -----------------------------------------------------
+        if (!loading) applyFilters(false);
+    }, [debouncedPriceRange, selectedRetailers, selectedCategories, sortType, maxDistance]);
 
 
-    const toggleRetailer = (id: string) => {
-        setSelectedRetailers(prev =>
-            prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
-        );
-    };
-
-    //─ APPLY FILTERS ─────────────────────────────────────────────
     const applyFilters = (reset: boolean = false) => {
-        // !!! USE DEBOUNCED VALUES for the API call unless resetting !!!
         const minP = reset ? priceBounds.min : debouncedPriceRange[0];
         const maxP = reset ? priceBounds.max : debouncedPriceRange[1];
-        // !!! --------------------------------- !!!
-
-        const distanceLimit = maxDistance ? Number(maxDistance) : undefined;
-
-        const sellerIds = reset
-            ? retailers.map(i => i.seller_id)
-            : (selectedRetailers.length > 0)
-                ? selectedRetailers
-                : retailers.map(i => i.seller_id);
+        const sellerIds = reset ? retailers.map(i => i.seller_id) : (selectedRetailers.length > 0) ? selectedRetailers : retailers.map(i => i.seller_id);
+        const currentCategories = reset ? [] : selectedCategories;
 
         setLoadingProducts(true);
-        const categoryIds = reset ? categories.map(c => c.category_id) : (selectedCategories.length > 0) ? selectedCategories : categories.map(c => c.category_id);
 
         let filter: FilterInterface = {
             minPrice: minP,
             maxPrice: maxP,
             sellerIds: sellerIds,
-            categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
+            categoryIds: currentCategories.length > 0 ? currentCategories : undefined,
         };
 
-        if (searchTerm !== "") {
-            filter.searchTerm = searchTerm;
-        }
-        if (distanceLimit) {
-            filter.maxDist = distanceLimit;
-        }
-
-        if (coord) {
-            filter.distFrom = coord;
-        }
+        if (searchTerm !== "") filter.searchTerm = searchTerm;
+        const dist = maxDistance ? Number(maxDistance) : undefined;
+        if (dist) filter.maxDist = dist;
+        if (coord) filter.distFrom = coord;
 
         const currentSortType = reset ? "" : sortType;
         if (currentSortType === 'price_asc') {
@@ -292,17 +221,15 @@ function WholesaleMarket() {
         loadData(filter);
     };
 
-    // --- CLEAR FILTERS FUNCTION ---
     const clearAllFilters = () => {
         setSearchTerm("");
         setMinPrice(priceBounds.min);
         setMaxPrice(priceBounds.max);
-        setDebouncedPriceRange([priceBounds.min, priceBounds.max]); // Reset debounced state too
+        setDebouncedPriceRange([priceBounds.min, priceBounds.max]);
         setSelectedRetailers([]);
         setMaxDistance("");
         setSortType("");
         setSelectedCategories([]);
-
         applyFilters(true);
     };
 
@@ -312,215 +239,157 @@ function WholesaleMarket() {
         </div>
     );
 
+    // Calculate active filter count for badge
+    const activeFilterCount =
+        (minPrice > priceBounds.min ? 1 : 0) +
+        (maxPrice < priceBounds.max ? 1 : 0) +
+        selectedRetailers.length +
+        selectedCategories.length +
+        (maxDistance ? 1 : 0);
+
     return (
         <div className="min-h-[calc(100vh-80px)] bg-green-50 flex flex-col">
-
-            {/* ───────────────── MAIN CONTENT ───────────────── */}
             <main className="flex-1 p-6 sm:p-8">
 
-                {/* Top Header */}
+                {/* Header Row */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900">Wholesale Market</h1>
                         <p className="text-slate-500">
-                            Showing <span className="font-bold text-green-500">{filtered.length}</span> items
+                            Showing <span className="font-bold text-green-600">{filtered.length}</span> items
                         </p>
                     </div>
                 </div>
 
-                {/* ───────────────── STICKY HORIZONTAL FILTER BAR ───────────────── */}
-                {/* FIX: Change top-[80px] to top-2 or top-0 */}
-                <div className="sticky top-2 bg-white p-4 rounded-2xl shadow-md flex flex-nowrap overflow-x-auto no-scrollbar gap-4 items-center border border-green-100 mb-8 z-30">
+                {/* ───────────────── NEW EXPANDABLE FILTER BAR ───────────────── */}
+                <div className="bg-white rounded-[2rem] shadow-sm border border-green-100 mb-8 overflow-hidden transition-all">
 
-                    {/* Search Bar */}
-                    <div className="relative w-full md:w-64">
-                        <div className="absolute inset-y-0 left-0 pl-4  items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-green-400" />
+                    {/* Top Control Bar (Always Visible) */}
+                    <div className="p-4 flex flex-wrap items-center gap-4 justify-between bg-white">
+
+                        {/* Search (Left) */}
+                        <div className="relative flex-grow max-w-md">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-green-400" size={20} />
+                            <input
+                                type="text"
+                                className="w-full pl-11 pr-4 py-3 bg-green-50 border border-transparent rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all font-medium"
+                                placeholder="Search wholesale items..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                        <input
-                            type="text"
-                            className="block w-full pl-11 pr-4 py-2 bg-green-50 border border-transparent rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-sm font-medium"
-                            placeholder="Search items..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+
+                        {/* Right Actions */}
+                        <div className="flex items-center gap-3 ml-auto">
+                            {/* Sort Dropdown */}
+                            <div className="relative min-w-[180px]">
+                                <select
+                                    className="w-full p-3 bg-green-50 border border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-green-500 outline-none font-bold text-slate-700 text-sm appearance-none cursor-pointer"
+                                    value={sortType}
+                                    onChange={e => setSortType(e.target.value)}
+                                >
+                                    <option value="">Sort: Recommended</option>
+                                    <option value="price_asc">Price: Low to High</option>
+                                    <option value="price_desc">Price: High to Low</option>
+                                    <option value="distance" disabled={!coord}>Nearest Distance</option>
+                                </select>
+                                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            </div>
+
+                            {/* Toggle Filter Panel Button */}
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold transition-all ${showFilters
+                                        ? 'bg-green-600 text-white shadow-lg shadow-green-200'
+                                        : 'bg-white border-2 border-green-100 text-green-600 hover:bg-green-50'
+                                    }`}
+                            >
+                                <Filter size={18} />
+                                <span>Filters</span>
+                                {activeFilterCount > 0 && (
+                                    <span className="ml-1 bg-white text-green-600 text-xs px-2 py-0.5 rounded-full">
+                                        {activeFilterCount}
+                                    </span>
+                                )}
+                                {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Sort By Dropdown */}
-                    <div className="relative w-full md:w-48">
-                        <label htmlFor="sort" className="sr-only">Sort By</label>
-                        <select
-                            id="sort"
-                            className="w-full p-2.5 bg-green-50 border border-transparent rounded-xl focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all font-medium text-slate-700 text-sm appearance-none cursor-pointer"
-                            value={sortType}
-                            onChange={e => setSortType(e.target.value)}
-                        >
-                            <option value="">Sort: Recommended</option>
-                            <option value="price_asc">Price: Low to High</option>
-                            <option value="price_desc">Price: High to Low</option>
-                            <option value="distance" disabled={coord ? false : true}>Nearest Distance</option>
-                        </select>
-                    </div>
+                    {/* Expanded Filter Panel */}
+                    {showFilters && (
+                        <div className="p-6 md:p-8 border-t border-green-100 bg-green-50/30 animate-fade-in">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-                    {/* Max Distance Input */}
-                    <div className="relative w-full md:w-32">
-                        <label htmlFor="maxDist" className="sr-only">Max Distance (km)</label>
-                        <input
-                            id="maxDist"
-                            type="number"
-                            className="w-full p-2.5 bg-green-50 border border-transparent rounded-xl focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all font-medium text-slate-700 text-sm"
-                            placeholder="Max Dist (km)"
-                            value={maxDistance}
-                            onChange={(e) => setMaxDistance(e.target.value)}
-                        />
-                    </div>
-
-                    {/* Price Range Dropdown */}
-                    <div className="relative">
-                        <button
-                            // Close other dropdown when opening this one
-                            onClick={() => { setIsPriceFilterOpen(prev => !prev); if (!isPriceFilterOpen) { setIsSellersFilterOpen(false); } }}
-                            className={`p-2.5 font-bold rounded-xl flex items-center gap-1 transition-colors text-sm whitespace-nowrap ${isPriceFilterOpen ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
-                        >
-                            <Filter size={16} />
-                            Price Range
-                            <span className="font-normal text-xs">(${minPrice} - ${maxPrice})</span>
-                            <ChevronDown size={16} className={isPriceFilterOpen ? 'rotate-180' : ''} />
-                        </button>
-
-                        {/* Price Range Dropdown CONTENT */}
-                        {isPriceFilterOpen && (
-                            <div className="absolute top-full mt-2 w-72 p-4 bg-white rounded-xl shadow-xl border border-green-100 z-40">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Price Range</h3>
-                                <div className="px-1">
-                                    <PriceSlider
-                                        min={priceBounds.min}
-                                        max={priceBounds.max}
-                                        value={[minPrice, maxPrice]}
-                                        // This updates the minPrice/maxPrice states immediately (live drag feedback)
-                                        onChange={(vals: number[]) => {
-                                            setMinPrice(vals[0]);
-                                            setMaxPrice(vals[1]);
-                                        }}
-                                    />
+                                {/* Col 1: Price & Distance */}
+                                <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Price Range</h3>
+                                        <div className="px-2">
+                                            <PriceSlider
+                                                min={priceBounds.min}
+                                                max={priceBounds.max}
+                                                value={[minPrice, maxPrice]}
+                                                onChange={(vals: number[]) => { setMinPrice(vals[0]); setMaxPrice(vals[1]); }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Max Distance (km)</h3>
+                                        <input
+                                            type="number"
+                                            className="w-full p-3 bg-white border border-green-100 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm font-medium"
+                                            placeholder="Any distance"
+                                            value={maxDistance}
+                                            onChange={(e) => setMaxDistance(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="flex justify-between text-xs font-medium text-slate-500 mt-2">
-                                    <span>Min: ${minPrice}</span>
-                                    <span>Max: ${maxPrice}</span>
+
+                                {/* Col 2: Categories */}
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Categories</h3>
+                                    <div className="bg-white p-3 rounded-2xl border border-green-100 max-h-48 overflow-y-auto custom-scrollbar space-y-1">
+                                        {categories.map(c => (
+                                            <label key={c.category_id} className="flex items-center justify-between p-2 rounded-xl hover:bg-green-50 cursor-pointer transition-colors group">
+                                                <span className="text-sm font-medium text-slate-600 group-hover:text-green-700">{c.category_name}</span>
+                                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${selectedCategories.includes(c.category_id) ? 'bg-green-500 border-green-500' : 'border-slate-200 bg-white'}`}>
+                                                    {selectedCategories.includes(c.category_id) && <Check size={14} className="text-white" strokeWidth={3} />}
+                                                </div>
+                                                <input type="checkbox" className="hidden" checked={selectedCategories.includes(c.category_id)} onChange={() => toggleCategory(c.category_id)} />
+                                            </label>
+                                        ))}
+                                        {categories.length === 0 && <p className="text-xs text-slate-400 p-2">No categories.</p>}
+                                    </div>
+                                </div>
+
+                                {/* Col 3: Sellers */}
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Sellers</h3>
+                                    <div className="bg-white p-3 rounded-2xl border border-green-100 max-h-48 overflow-y-auto custom-scrollbar space-y-1">
+                                        {retailers.map(r => (
+                                            <label key={r.seller_id} className="flex items-center justify-between p-2 rounded-xl hover:bg-green-50 cursor-pointer transition-colors group">
+                                                <span className="text-sm font-medium text-slate-600 group-hover:text-green-700">{r.name}</span>
+                                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${selectedRetailers.includes(r.seller_id) ? 'bg-green-500 border-green-500' : 'border-slate-200 bg-white'}`}>
+                                                    {selectedRetailers.includes(r.seller_id) && <Check size={14} className="text-white" strokeWidth={3} />}
+                                                </div>
+                                                <input type="checkbox" className="hidden" checked={selectedRetailers.includes(r.seller_id)} onChange={() => toggleRetailer(r.seller_id)} />
+                                            </label>
+                                        ))}
+                                        {retailers.length === 0 && <p className="text-xs text-slate-400 p-2">No sellers found.</p>}
+                                    </div>
                                 </div>
                             </div>
-                        )}
-                    </div>
 
-                    {/* Sellers Dropdown */}
-                    <div className="relative">
-                        <button
-                            // Close other dropdown when opening this one
-                            onClick={() => { setIsSellersFilterOpen(prev => !prev); if (!isSellersFilterOpen) { setIsPriceFilterOpen(false) } }}
-                            className={`p-2.5 font-bold rounded-xl flex items-center gap-1 transition-colors text-sm whitespace-nowrap ${isSellersFilterOpen ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                        >
-                            <Filter size={16} />
-                            Sellers
-                            <span className="font-normal text-xs">
-                                ({selectedRetailers.length === 0 ? 'All' : `${selectedRetailers.length} selected`})
-                            </span>
-                            <ChevronDown size={16} className={isSellersFilterOpen ? 'rotate-180' : ''} />
-                        </button>
-
-                        {/* Sellers Dropdown CONTENT */}
-                        {isSellersFilterOpen && (
-                            <div className="absolute top-full mt-2 w-64 p-4 bg-white rounded-xl shadow-xl border border-green-100 z-40">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Sellers ({retailers.length})</h3>
-
-                                <p className="text-xs text-slate-500 italic mb-3 p-1 bg-green-50 rounded-lg border-l-4 border-green-300">
-                                    Deselecting all sellers will show all listings.
-                                </p>
-
-                                <div className="space-y-1 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                                    {retailers.map(r => (
-                                        <label key={r.seller_id} className="flex items-center space-x-3 p-1 rounded-lg hover:bg-green-50 cursor-pointer transition-colors group">
-                                            <div className="relative flex items-center">
-                                                <input
-                                                    type="checkbox"
-                                                    className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-slate-200 checked:border-green-500 checked:bg-green-500 transition-all"
-                                                    checked={selectedRetailers.includes(r.seller_id)}
-                                                    onChange={() => toggleRetailer(r.seller_id)}
-                                                />
-                                                <svg className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                            </div>
-                                            <span className="text-sm font-medium text-slate-600 group-hover:text-green-600 transition-colors">{r.name}</span>
-                                        </label>
-                                    ))}
-                                    {retailers.length === 0 && <p className="text-sm text-slate-400 italic">No sellers found.</p>}
-                                </div>
+                            {/* Footer Actions */}
+                            <div className="mt-6 flex justify-end border-t border-green-200 pt-4">
+                                <button onClick={clearAllFilters} className="text-sm font-bold text-slate-500 hover:text-red-500 flex items-center gap-1">
+                                    <X size={16} /> Clear Filters
+                                </button>
                             </div>
-                        )}
-                    </div>
-                    {/* Categories Dropdown */}
-                    <div className="relative">
-                        <button
-                            onClick={() => {
-                                setIsCategoriesFilterOpen(prev => !prev);
-                                if (!isCategoriesFilterOpen) {
-                                    setIsPriceFilterOpen(false);
-                                    setIsSellersFilterOpen(false);
-                                }
-                            }}
-                            className={`p-2.5 font-bold rounded-xl flex items-center gap-1 transition-colors text-sm whitespace-nowrap ${isCategoriesFilterOpen ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                }`}
-                        >
-                            <Filter size={16} />
-                            Categories
-                            <span className="font-normal text-xs">
-                                {selectedCategories.length === 0 ? "(All)" : `(${selectedCategories.length} selected)`}
-                            </span>
-                            <ChevronDown size={16} className={isCategoriesFilterOpen ? 'rotate-180' : ''} />
-                        </button>
-
-                        {isCategoriesFilterOpen && (
-                            <div className="absolute top-full mt-2 w-64 p-4 bg-white rounded-xl shadow-xl border border-green-100 z-40">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                                    Categories ({categories.length})
-                                </h3>
-
-                                <div className="space-y-1 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                                    {categories.map(c => (
-                                        <label key={c.category_id} className="flex items-center space-x-3 p-1 rounded-lg hover:bg-green-50 cursor-pointer transition-colors group">
-                                            <div className="relative flex items-center">
-                                                <input
-                                                    type="checkbox"
-                                                    className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-slate-200 checked:border-green-500 checked:bg-green-500 transition-all"
-                                                    checked={selectedCategories.includes(c.category_id)}
-                                                    onChange={() => toggleCategory(c.category_id)}
-                                                />
-                                                <svg className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                                </svg>
-                                            </div>
-                                            <span className="text-sm font-medium text-slate-600 group-hover:text-green-600 transition-colors">
-                                                {c.category_name}
-                                            </span>
-                                        </label>
-                                    ))}
-                                    {categories.length === 0 && (
-                                        <p className="text-sm text-slate-400 italic">No categories found.</p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-
-                    {/* Reset Button */}
-                    <button
-                        onClick={clearAllFilters}
-                        className="text-xs font-bold text-slate-500 hover:text-green-700 ml-auto whitespace-nowrap"
-                    >
-                        Reset All
-                    </button>
-
+                        </div>
+                    )}
                 </div>
-                {/* ───────────────── END HORIZONTAL FILTER BAR ───────────────── */}
 
                 {/* Product Grid */}
                 {loadingProducts ? (
