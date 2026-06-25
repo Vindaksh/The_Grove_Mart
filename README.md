@@ -5,6 +5,8 @@ This is a robust, React-based web application designed to handle complex multi-v
 
 
 <img width="629" height="379" alt="image" src="https://github.com/user-attachments/assets/29100332-d8f4-49ea-abbe-b0ca3e19b6cd" />
+<img width="900" height="418" alt="image" src="https://github.com/user-attachments/assets/94d90f34-b8bc-4d2c-8544-a205482638ab" />
+
 ## Features
 ### Multi-Role Ecosystem
 The platform uses Role-Based Access Control (RBAC) to serve three distinct types of users, each with their own dedicated dashboards and toolsets:
