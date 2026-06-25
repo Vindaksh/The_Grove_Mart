@@ -1,4 +1,4 @@
-# MartNow Market
+# The Grove Live Market
 **A Comprehensive Multi-Tier E-Commerce & Wholesale Platform**
 
 This is a robust, React-based web application designed to handle complex multi-vendor workflows, seamlessly connecting **Wholesalers**, **Retailers**, and **End-Consumers** within a single, dynamic platform.
